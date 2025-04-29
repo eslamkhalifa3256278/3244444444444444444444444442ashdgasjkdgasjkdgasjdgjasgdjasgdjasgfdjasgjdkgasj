@@ -32,6 +32,7 @@ def app():
         st.session_state.uploaded_files = 0
         st.session_state.max_files_per_day = 2
         st.session_state.last_upload_date = None
+        st.session_state.uploaded_files_list = []
 
     # صفحة إنشاء حساب (التصميم الجديد)
     def create_account():
@@ -199,27 +200,97 @@ def app():
             with col2:
                 st.title("LEO Chat")
 
-            # تحميل الملفات مع إرسال الرسالة
+            # تحميل الملفات مع إرسال الرسالة - التصميم الجديد
             if "logged_in" in st.session_state and st.session_state.logged_in:
+                # إضافة تنسيقات CSS مخصصة
+                st.markdown("""
+                <style>
+                    .file-upload-container {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        margin-bottom: 15px;
+                    }
+                    .file-upload-icon {
+                        font-size: 28px;
+                        color: #4169E1;
+                    }
+                    .file-preview-container {
+                        display: flex;
+                        gap: 8px;
+                        margin-top: 5px;
+                    }
+                    .file-preview-item {
+                        width: 32px;
+                        height: 32px;
+                        border-radius: 4px;
+                        background-color: #f0f2f6;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 16px;
+                    }
+                    .upload-btn {
+                        flex-grow: 1;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+
+                # صف لتحميل الملفات
+                st.markdown('<div class="file-upload-container">', unsafe_allow_html=True)
+                
+                # أيقونة الملفات
+                st.markdown('<div class="file-upload-icon">📁</div>', unsafe_allow_html=True)
+                
+                # زر رفع الملفات
                 uploaded_file = st.file_uploader(
-                    "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
-                    type=["pdf", "txt", "docx"],
+                    "رفع ملف (حد أقصى 2 ملف يومياً)",
+                    type=["pdf", "txt", "docx", "png", "jpg", "jpeg"],
                     accept_multiple_files=False,
-                    key="file_uploader"
+                    key="file_uploader",
+                    label_visibility="collapsed"
                 )
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                # عرض معاينة الملفات المرفوعة
+                if st.session_state.uploaded_files_list:
+                    st.markdown('<div class="file-preview-container">', unsafe_allow_html=True)
+                    for file in st.session_state.uploaded_files_list[-2:]:  # عرض آخر ملفين فقط
+                        if file.type.startswith('image/'):
+                            st.image(file, width=32)
+                        else:
+                            file_icon = "📄" if file.type == "application/pdf" else \
+                                        "📝" if file.type == "text/plain" else \
+                                        "📎" if file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" else "📁"
+                            st.markdown(f'<div class="file-preview-item">{file_icon}</div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
                 if uploaded_file:
                     current_date = datetime.now().date()
                     if st.session_state.last_upload_date != current_date:
                         st.session_state.uploaded_files = 0
                         st.session_state.last_upload_date = current_date
+                        st.session_state.uploaded_files_list = []
 
                     if st.session_state.uploaded_files < st.session_state.max_files_per_day:
                         st.session_state.uploaded_files += 1
-                        st.success(
-                            f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
+                        st.session_state.uploaded_files_list.append(uploaded_file)
+                        
+                        # عرض رسالة نجاح مع أيقونة
+                        file_icon = "📄" if uploaded_file.type == "application/pdf" else \
+                                    "📝" if uploaded_file.type == "text/plain" else \
+                                    "🖼️" if uploaded_file.type.startswith("image/") else "📎"
+                        
+                        st.success(f"""
+                        {file_icon} تم رفع الملف بنجاح: **{uploaded_file.name}**  
+                        ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day} - الحد اليومي)
+                        """)
                     else:
-                        st.warning("لقد تجاوزت الحد اليومي لرفع الملفات للأسف")
+                        st.warning("""
+                        ⚠️ لقد وصلت للحد الأقصى اليومي لرفع الملفات  
+                        (2 ملف يومياً في النسخة المجانية)
+                        """)
 
             # عرض المحادثة
             if "messages" not in st.session_state:

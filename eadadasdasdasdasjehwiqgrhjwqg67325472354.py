@@ -45,7 +45,7 @@ def app():
                 <h2 style="color:#FFFFFF;text-align:center;margin-bottom:30px">إنشاء حساب جديد</h2>
             """, unsafe_allow_html=True)
             
-            with st.form("إنشاء حساب جديد"):
+            with st.form("😎إنشاء حساب جديد"):
                 name = st.text_input("الاسم الكامل", placeholder="أدخل اسمك الكامل")
                 email = st.text_input("البريد الإلكتروني", placeholder="أدخل بريدك الإلكتروني")
                 birth_date = st.date_input("تاريخ الميلاد", min_value=date(1900, 1, 1))
@@ -95,7 +95,7 @@ def app():
                 <h2 style="color:#FFFFFF;text-align:center;margin-bottom:30px">تسجيل الدخول</h2>
             """, unsafe_allow_html=True)
             
-            with st.form("تسجيل الدخول"):
+            with st.form("😉تسجيل الدخول"):
                 email = st.text_input("البريد الإلكتروني", placeholder="أدخل بريدك الإلكتروني")
                 password = st.text_input("كلمة المرور", type="password", placeholder="أدخل كلمة المرور")
                 

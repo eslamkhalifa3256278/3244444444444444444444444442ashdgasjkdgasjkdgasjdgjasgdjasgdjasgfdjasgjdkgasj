@@ -9,7 +9,7 @@ import base64
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
-API_KEY = st.secrets["AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaW"]
+API_KEY = "AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaWw"  # ✅ API Key اتضاف هنا
 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-2.0-vision-pro')
@@ -27,20 +27,12 @@ def app():
     st.set_page_config(page_title="LEO Chat", layout="wide")
 
     with st.container():
-        st.markdown("""
-        <style>
-        body, html, .main, .block-container {
+        st.markdown("""<style>body, html, .main, .block-container {
             padding: 0;
             margin: 0;
         }
-        .css-18e3th9 {
-            padding-top: 1rem;
-        }
-        .chat-container {
-            background-color: #f0f2f6;
-            padding: 10px;
-            border-radius: 10px;
-        }
+        .css-18e3th9 { padding-top: 1rem; }
+        .chat-container { background-color: #f0f2f6; padding: 10px; border-radius: 10px; }
         .login-box {
             max-width: 400px;
             margin: auto;
@@ -61,9 +53,7 @@ def app():
             border-radius: 5px;
             text-decoration: none;
             font-size: 13px;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        }</style>""", unsafe_allow_html=True)
 
     if 'logged_in' not in st.session_state:
         if st.session_state.current_page == "login":

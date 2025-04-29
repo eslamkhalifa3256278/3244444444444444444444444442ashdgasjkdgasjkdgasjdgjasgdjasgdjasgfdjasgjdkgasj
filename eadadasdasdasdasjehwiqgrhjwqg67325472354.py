@@ -41,8 +41,8 @@ def app():
         
         with col2:
             st.markdown("""
-            <div style="background-color:#f0f2f6;padding:30px;border-radius:15px;box-shadow:0 4px 8px rgba(0,0,0,0.1)">
-                <h2 style="color:#2c3e50;text-align:center;margin-bottom:30px">إنشاء حساب جديد</h2>
+            <div style="background-color:#4169E1;padding:30px;border-radius:15px;box-shadow:0 4px 8px rgba(0,0,0,0.1)">
+                <h2 style="color:#FFFFFF;text-align:center;margin-bottom:30px">إنشاء حساب جديد</h2>
             """, unsafe_allow_html=True)
             
             with st.form("إنشاء حساب جديد"):
@@ -87,12 +87,12 @@ def app():
     def login_page():
         col1, col2 = st.columns([1, 2])
         with col1:
-            st.image(LOGO_URL, width=300)
+            st.image(LOGO_URL, width=500)
         
         with col2:
             st.markdown("""
-            <div style="background-color:#f0f2f6;padding:30px;border-radius:15px;box-shadow:0 4px 8px rgba(0,0,0,0.1)">
-                <h2 style="color:#2c3e50;text-align:center;margin-bottom:30px">تسجيل الدخول</h2>
+            <div style="background-color:#4169E1;padding:30px;border-radius:15px;box-shadow:0 4px 8px rgba(0,0,0,0.1)">
+                <h2 style="color:#FFFFFF;text-align:center;margin-bottom:30px">تسجيل الدخول</h2>
             """, unsafe_allow_html=True)
             
             with st.form("تسجيل الدخول"):

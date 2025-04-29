@@ -1,4 +1,4 @@
-import streamlit as st
+mport streamlit as st
 import google.generativeai as genai
 from datetime import datetime, date
 import hashlib
@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 import base64
 from PIL import Image
 import io
-import os
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
@@ -34,122 +33,46 @@ def app():
     # تحسينات للهاتف المحمول
     st.markdown("""
     <style>
-        /* تحسينات للهاتف المحمول */
         @media (max-width: 768px) {
-            .main .block-container {
-                padding: 0.5rem 1rem !important;
-            }
             .sidebar .sidebar-content {
-                width: 85% !important;
-                transform: translateX(-100%);
-                transition: transform 300ms ease-in-out;
-                position: fixed;
-                z-index: 100;
-                height: 100%;
-                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                width: 80px !important;
             }
-            .sidebar .sidebar-content.sidebar-visible {
-                transform: translateX(0);
+            .main .block-container {
+                padding: 1rem;
             }
             .stChatInput {
-                position: fixed;
                 bottom: 0;
+                position: fixed;
+                width: 100%;
                 left: 0;
-                right: 0;
                 padding: 0.5rem;
                 background: white;
-                z-index: 99;
-                box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+                z-index: 100;
             }
             .stChatMessage {
-                max-width: 90% !important;
-                margin-left: 0 !important;
-                margin-right: 0 !important;
-            }
-            .mobile-menu-btn {
-                position: fixed;
-                top: 10px;
-                left: 10px;
-                z-index: 101;
-                background: white;
-                border-radius: 50%;
-                padding: 10px;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            }
-            .auth-container {
-                width: 95% !important;
-                margin: 0 auto !important;
-                padding: 1rem !important;
+                max-width: 85%;
             }
         }
         
         /* تحسينات عامة */
         .stTextInput input, .stTextArea textarea, .stPassword input {
-            border-radius: 12px !important;
-            padding: 12px !important;
-            border: 1px solid #e0e0e0 !important;
+            border-radius: 10px !important;
+            padding: 10px !important;
         }
         .stButton button {
-            border-radius: 12px !important;
-            padding: 10px 20px !important;
-            font-weight: 500 !important;
-            transition: all 0.3s ease !important;
-        }
-        .stButton button:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+            border-radius: 10px !important;
+            padding: 8px 16px !important;
         }
         .stChatMessage {
-            border-radius: 18px !important;
-            padding: 14px 18px !important;
-            margin: 10px 0 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+            border-radius: 15px !important;
+            padding: 12px !important;
+            margin: 8px 0 !important;
         }
         .sidebar .sidebar-content {
-            background: linear-gradient(180deg, #f8f9fa, #ffffff) !important;
-            padding: 1.5rem 1rem !important;
-        }
-        .auth-container {
-            max-width: 500px;
-            margin: 2rem auto;
-            padding: 2rem;
-            border-radius: 20px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-            background-color: white;
-        }
-        .auth-title {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 1.8rem;
-            font-weight: 600;
-        }
-        .logo-container {
-            text-align: center;
-            margin-bottom: 1.8rem;
-        }
-        .download-btn {
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: #4CAF50;
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 500;
-            margin-top: 10px;
-            transition: all 0.3s ease;
-        }
-        .download-btn:hover {
-            background-color: #45a049;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            color: white;
+            background: linear-gradient(180deg, #f8f9fa, #e9ecef);
         }
     </style>
     """, unsafe_allow_html=True)
-
-    # إدارة حالة القائمة الجانبية للهاتف
-    if 'sidebar_visible' not in st.session_state:
-        st.session_state.sidebar_visible = False
 
     # إدارة الملفات
     if "uploaded_files" not in st.session_state:
@@ -163,17 +86,16 @@ def app():
         <style>
             .auth-container {
                 max-width: 500px;
-                margin: 2rem auto;
+                margin: 0 auto;
                 padding: 2rem;
-                border-radius: 20px;
-                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+                border-radius: 15px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 background-color: white;
             }
             .auth-title {
                 text-align: center;
                 color: #2c3e50;
-                margin-bottom: 1.8rem;
-                font-weight: 600;
+                margin-bottom: 1.5rem;
             }
         </style>
         """, unsafe_allow_html=True)
@@ -220,28 +142,27 @@ def app():
         <style>
             .auth-container {
                 max-width: 500px;
-                margin: 2rem auto;
+                margin: 0 auto;
                 padding: 2rem;
-                border-radius: 20px;
-                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+                border-radius: 15px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 background-color: white;
             }
             .auth-title {
                 text-align: center;
                 color: #2c3e50;
-                margin-bottom: 1.8rem;
-                font-weight: 600;
+                margin-bottom: 1.5rem;
             }
             .logo-container {
                 text-align: center;
-                margin-bottom: 1.8rem;
+                margin-bottom: 1.5rem;
             }
         </style>
         """, unsafe_allow_html=True)
         
         with st.container():
             st.markdown('<div class="auth-container">', unsafe_allow_html=True)
-            st.markdown('<div class="logo-container"><img src="{}" width="180"></div>'.format(LOGO_URL), unsafe_allow_html=True)
+            st.markdown('<div class="logo-container"><img src="{}" width="150"></div>'.format(LOGO_URL), unsafe_allow_html=True)
             st.markdown('<h2 class="auth-title">تسجيل الدخول</h2>', unsafe_allow_html=True)
             
             with st.form("تسجيل الدخول"):
@@ -272,12 +193,12 @@ def app():
     def info_page():
         st.title("معلومات عن التطبيق")
         st.markdown("""
-        <div style="background-color:#f8f9fa;padding:25px;border-radius:20px;margin-bottom:25px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-            <h3 style="color:#2c3e50;border-bottom:2px solid #eee;padding-bottom:10px">LEO Chat</h3>
-            <p style="font-size:16px"><strong>تم تطوير هذا التطبيق بواسطة:</strong> إسلام خليفة</p>
-            <p style="font-size:16px"><strong>الجنسية:</strong> مصري</p>
-            <p style="font-size:16px"><strong>للتواصل:</strong> 01028799352</p>
-            <p style="font-size:16px"><strong>الإصدار:</strong> 1.0</p>
+        <div style="background-color:#f0f2f6;padding:20px;border-radius:10px;margin-bottom:20px">
+            <h3>LEO Chat</h3>
+            <p>تم تطوير هذا التطبيق بواسطة <strong>إسلام خليفة</strong></p>
+            <p>الجنسية: مصري</p>
+            <p>للتواصل: 01028799352</p>
+            <p>الإصدار: 1.0</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -290,46 +211,28 @@ def app():
         buffered = io.BytesIO()
         img_data.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue()).decode()
-        href = f'<a class="download-btn" href="data:file/png;base64,{img_str}" download="{filename}">⬇️ تنزيل الصورة</a>'
+        href = f'<a href="data:file/png;base64,{img_str}" download="{filename}">تنزيل الصورة</a>'
         return href
 
     # إدارة الصفحات
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "login" if not st.session_state.users_db else "login"
 
-    # زر القائمة للهاتف المحمول
-    if 'logged_in' in st.session_state and st.session_state.logged_in:
-        if st.sidebar.button("☰"):
-            st.session_state.sidebar_visible = not st.session_state.sidebar_visible
-
     # الشريط الجانبي للمستخدم المسجل
     if 'logged_in' in st.session_state and st.session_state.logged_in:
-        sidebar_class = "sidebar-visible" if st.session_state.sidebar_visible else ""
-        st.markdown(f"""
-        <style>
-            @media (max-width: 768px) {{
-                .sidebar .sidebar-content {{
-                    transform: translateX({'0' if st.session_state.sidebar_visible else '-100%'});
-                }}
-            }}
-        </style>
-        """, unsafe_allow_html=True)
-        
         with st.sidebar:
-            st.image(LOGO_URL, width=150)
+            st.image(LOGO_URL, width=120)
             st.markdown(f"### مرحباً، {st.session_state.current_user['name']}")
             st.markdown(f"**البريد:** {st.session_state.current_user['email']}")
             
             if st.button("🚪 تسجيل الخروج", type="primary", use_container_width=True):
                 st.session_state.logged_in = False
-                st.session_state.sidebar_visible = False
                 st.rerun()
 
             st.markdown("---")
 
             if st.button("🔄 بدء محادثة جديدة", use_container_width=True):
                 st.session_state.messages = []
-                st.session_state.sidebar_visible = False
                 st.rerun()
 
             st.markdown("---")
@@ -350,7 +253,6 @@ def app():
             st.markdown("---")
             if st.button("ℹ️ معلومات عن التطبيق", use_container_width=True):
                 st.session_state.show_info = True
-                st.session_state.sidebar_visible = False
                 st.rerun()
 
     # الصفحة الرئيسية
@@ -402,7 +304,7 @@ def app():
                     if message["type"] == "text":
                         st.markdown(message["content"])
                     elif message["type"] == "image":
-                        st.image(message["content"], use_column_width=True)
+                        st.image(message["content"])
                         if "download_link" in message:
                             st.markdown(message["download_link"], unsafe_allow_html=True)
 
@@ -417,7 +319,7 @@ def app():
                     # توليد الرد
                     with st.spinner("جارٍ إعداد الرد..."):
                         try:
-                            if "اصنع صورة" in prompt or "أنشئ صورة" in prompt or "ارسم صورة" in prompt or "صورة" in prompt:
+                            if "اصنع صورة" in prompt or "أنشئ صورة" in prompt or "ارسم صورة" in prompt:
                                 response = model.generate_content(prompt + " (أرجو إنشاء صورة)")
                                 if hasattr(response, 'images'):
                                     img = response.images[0]
@@ -446,11 +348,11 @@ def app():
             # تذييل الصفحة
             st.markdown("---")
             st.caption("""
-            <div style="text-align: center; font-size: 14px; color: #666;">
+            <div style="text-align: center; font-size: 14px;">
                 تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
             </div>
             """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
-    app()
+    app()   

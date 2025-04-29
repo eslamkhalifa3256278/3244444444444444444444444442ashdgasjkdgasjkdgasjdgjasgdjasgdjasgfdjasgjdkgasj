@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 LOGO_URL = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
 
 # تهيئة النموذج باستخدام مفتاح API من الـ secrets
-genai.configure(api_key=st.secrets["API_KEY"])
+genai.configure(api_key=st.secrets[""AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaW"])
 model = genai.GenerativeModel('gemini-2.0-flash')
 
 # قاعدة بيانات المستخدمين (مؤقتة)

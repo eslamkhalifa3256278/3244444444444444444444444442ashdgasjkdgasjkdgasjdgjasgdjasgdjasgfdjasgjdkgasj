@@ -9,7 +9,7 @@ import base64
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
-API_KEY = st.secrets[""AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaW"]
+API_KEY = st.secrets["AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaW"]
 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-2.0-vision-pro')

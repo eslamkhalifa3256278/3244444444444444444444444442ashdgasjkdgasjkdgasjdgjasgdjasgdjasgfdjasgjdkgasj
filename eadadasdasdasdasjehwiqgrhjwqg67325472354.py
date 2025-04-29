@@ -7,14 +7,16 @@ from dateutil.relativedelta import relativedelta
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
+API_KEY = "AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaWw"
 
-# تهيئة النموذج باستخدام مفتاح API من الـ secrets
-genai.configure(api_key=st.secrets["API_KEY"])
+# تهيئة النموذج
+genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-2.0-flash')
 
-# قاعدة بيانات المستخدمين (مؤقتة)
+# قاعدة بيانات المستخدمين (في الواقع يجب أن تكون قاعدة بيانات حقيقية)
 if 'users_db' not in st.session_state:
     st.session_state.users_db = {}
+
 
 # إعداد واجهة المستخدم
 def app():
@@ -25,11 +27,13 @@ def app():
         initial_sidebar_state="expanded"
     )
 
+    # إدارة الملفات
     if "uploaded_files" not in st.session_state:
         st.session_state.uploaded_files = 0
         st.session_state.max_files_per_day = 2
         st.session_state.last_upload_date = None
 
+    # صفحة إنشاء حساب
     def create_account():
         with st.form("إنشاء حساب جديد"):
             st.subheader("إنشاء حساب جديد")
@@ -58,6 +62,7 @@ def app():
                     st.session_state.current_page = "login"
                     st.rerun()
 
+    # صفحة تسجيل الدخول
     def login_page():
         with st.form("تسجيل الدخول"):
             st.subheader("تسجيل الدخول")
@@ -78,6 +83,7 @@ def app():
                 else:
                     st.error("بيانات الدخول غير صحيحة")
 
+    # صفحة المعلومات
     def info_page():
         st.title("معلومات عن التطبيق")
         st.markdown("""
@@ -90,9 +96,11 @@ def app():
         </div>
         """, unsafe_allow_html=True)
 
+    # إدارة الصفحات
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = "login"
+        st.session_state.current_page = "login" if not st.session_state.users_db else "login"
 
+    # الشريط الجانبي للمستخدم المسجل
     if 'logged_in' in st.session_state and st.session_state.logged_in:
         with st.sidebar:
             st.image(LOGO_URL, width=200)
@@ -129,6 +137,7 @@ def app():
                 st.session_state.show_info = True
                 st.rerun()
 
+    # الصفحة الرئيسية
     if 'logged_in' not in st.session_state or not st.session_state.logged_in:
         if st.session_state.current_page == "login":
             login_page()
@@ -147,12 +156,14 @@ def app():
                 st.session_state.show_info = False
                 st.rerun()
         else:
+            # المنطقة الرئيسية
             col1, col2 = st.columns([0.1, 0.9])
             with col1:
                 st.image(LOGO_URL, width=80)
             with col2:
                 st.title("LEO Chat")
 
+            # تحميل الملفات مع إرسال الرسالة
             if "logged_in" in st.session_state and st.session_state.logged_in:
                 uploaded_file = st.file_uploader(
                     "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
@@ -174,6 +185,7 @@ def app():
                     else:
                         st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
 
+            # عرض المحادثة
             if "messages" not in st.session_state:
                 st.session_state.messages = []
 
@@ -182,11 +194,15 @@ def app():
                 with st.chat_message(message["role"], avatar=avatar):
                     st.markdown(message["content"])
 
+            # إدخال الرسائل مع إرسال بالضغط على Enter
             if prompt := st.chat_input("اكتب رسالتك هنا..."):
                 if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.warning("الرجاء تسجيل الدخول لإرسال الرسائل")
                 else:
+                    # إضافة رسالة المستخدم
                     st.session_state.messages.append({"role": "user", "content": prompt})
+
+                    # توليد الرد
                     with st.spinner("جارٍ إعداد الرد..."):
                         try:
                             response = model.generate_content(prompt)
@@ -196,12 +212,14 @@ def app():
                         except Exception as e:
                             st.error(f"حدث خطأ: {str(e)}")
 
+            # تذييل الصفحة
             st.markdown("---")
             st.caption("""
             <div style="text-align: center; font-size: 14px;">
                 تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
             </div>
             """, unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     app()

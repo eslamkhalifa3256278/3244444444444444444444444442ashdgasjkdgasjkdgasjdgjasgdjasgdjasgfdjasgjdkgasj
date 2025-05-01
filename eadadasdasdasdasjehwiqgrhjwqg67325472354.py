@@ -16,198 +16,208 @@ model = genai.GenerativeModel('gemini-2.0-flash')
 if 'users_db' not in st.session_state:
     st.session_state.users_db = {}
 
-# CSS مخصص للتصميم الهادئ
+# CSS مخصص للتصميم
 st.markdown("""
 <style>
     :root {
-        --primary: #2D3748;
-        --secondary: #4A5568;
-        --accent: #4299E1;
-        --light: #F7FAFC;
-        --border: #E2E8F0;
+        --primary-light: #6366F1;
+        --primary-dark: #4F46E5;
+        --secondary-light: #A5B4FC;
+        --secondary-dark: #818CF8;
+        --text-dark: #1F2937;
+        --text-light: #6B7280;
+        --bg-light: #F9FAFB;
+        --border-light: #E5E7EB;
     }
     
     .main {
-        background-color: #F8F9FA;
+        background-color: var(--bg-light);
     }
     
     .auth-container {
-        max-width: 480px;
-        margin: 2rem auto;
-        padding: 2.5rem;
+        max-width: 420px;
+        margin: 3rem auto;
+        padding: 2rem;
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border-light);
     }
     
-    .logo-container {
+    .logo-header {
         text-align: center;
         margin-bottom: 1.5rem;
     }
     
     .logo-img {
-        width: 80px;
+        width: 70px;
         height: auto;
-        opacity: 0.9;
+        opacity: 0.95;
     }
     
-    .auth-header {
+    .auth-title {
         text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    .auth-header h2 {
-        color: var(--primary);
+        margin-bottom: 1.5rem;
+        background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         font-weight: 600;
-        margin-bottom: 0.5rem;
+        font-size: 1.8rem;
     }
     
-    .auth-header p {
-        color: var(--secondary);
+    .auth-subtitle {
+        text-align: center;
+        color: var(--text-light);
         font-size: 0.95rem;
+        margin-bottom: 1.5rem;
     }
     
     .stTextInput>div>div>input, 
     .stPassword>div>div>input,
     .stDateInput>div>div>input {
         border-radius: 8px;
-        border: 1px solid var(--border);
+        border: 1px solid var(--border-light);
         padding: 10px 12px;
     }
     
     .stButton>button {
         width: 100%;
         border-radius: 8px;
-        padding: 12px;
-        background-color: var(--primary);
+        padding: 0.75rem;
+        background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+        color: white;
+        font-weight: 500;
+        border: none;
         transition: all 0.2s;
     }
     
     .stButton>button:hover {
-        background-color: var(--secondary);
-        transform: none;
+        opacity: 0.9;
+        transform: translateY(-1px);
     }
     
-    .auth-footer {
+    .auth-toggle {
         text-align: center;
         margin-top: 1.5rem;
-        color: var(--secondary);
+        color: var(--text-light);
         font-size: 0.9rem;
     }
     
-    .auth-footer a {
-        color: var(--accent);
-        text-decoration: none;
+    .auth-toggle a {
+        color: var(--primary-dark);
         font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
     }
     
-    .error-message {
-        color: #E53E3E;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
+    .error-msg {
+        color: #EF4444;
+        font-size: 0.85rem;
         text-align: center;
+        margin-top: 0.5rem;
     }
     
-    .success-message {
-        color: #38A169;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
+    .success-msg {
+        color: #10B981;
+        font-size: 0.85rem;
         text-align: center;
+        margin-top: 0.5rem;
+    }
+    
+    [data-testid="stForm"] {
+        border: none !important;
+        padding: 0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-def create_account():
-    with st.container():
-        st.markdown("""
-        <div class="auth-container">
-            <div class="logo-container">
-                <img src="https://www2.0zz0.com/2025/04/28/19/583882920.png" class="logo-img">
-            </div>
-            <div class="auth-header">
-                <h2>إنشاء حساب جديد</h2>
-                <p>ابدأ رحلتك مع LEO Chat</p>
-            </div>
-        """, unsafe_allow_html=True)
+def auth_section():
+    """جزء المصادقة في صفحة واحدة"""
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
         
-        with st.form("register_form"):
-            name = st.text_input("الاسم الكامل", placeholder="الاسم الثلاثي")
-            email = st.text_input("البريد الإلكتروني", placeholder="example@example.com")
-            birth_date = st.date_input("تاريخ الميلاد", min_value=date(1900, 1, 1))
-            password = st.text_input("كلمة المرور", type="password", placeholder="8 أحرف على الأقل")
-            confirm_password = st.text_input("تأكيد كلمة المرور", type="password", placeholder="أعد إدخال كلمة المرور")
-            
-            submitted = st.form_submit_button("إنشاء الحساب")
-            
-            if submitted:
-                age = relativedelta(date.today(), birth_date).years
-                if age < 18:
-                    st.markdown('<p class="error-message">يجب أن يكون عمرك 18 عاماً أو أكثر</p>', unsafe_allow_html=True)
-                elif password != confirm_password:
-                    st.markdown('<p class="error-message">كلمة المرور غير متطابقة</p>', unsafe_allow_html=True)
-                elif email in st.session_state.users_db:
-                    st.markdown('<p class="error-message">هذا البريد الإلكتروني مسجل بالفعل</p>', unsafe_allow_html=True)
-                else:
-                    st.session_state.users_db[email] = {
-                        'name': name,
-                        'password': hashlib.sha256(password.encode()).hexdigest(),
-                        'birth_date': birth_date
-                    }
-                    st.markdown('<p class="success-message">تم إنشاء الحساب بنجاح</p>', unsafe_allow_html=True)
-                    time.sleep(1.5)
-                    st.session_state.current_page = "login"
-                    st.rerun()
-        
+        # شعار التطبيق
         st.markdown("""
-            <div class="auth-footer">
-                لديك حساب بالفعل؟ <a href="#" onclick="window.streamlitApi.setComponentValue('go_to_login')">تسجيل الدخول</a>
-            </div>
+        <div class="logo-header">
+            <img src="https://www2.0zz0.com/2025/04/28/19/583882920.png" class="logo-img">
         </div>
         """, unsafe_allow_html=True)
-
-def login_page():
-    with st.container():
-        st.markdown("""
-        <div class="auth-container">
-            <div class="logo-container">
-                <img src="https://www2.0zz0.com/2025/04/28/19/583882920.png" class="logo-img">
-            </div>
-            <div class="auth-header">
-                <h2>تسجيل الدخول</h2>
-                <p>مرحبًا بعودتك إلى LEO Chat</p>
-            </div>
-        """, unsafe_allow_html=True)
         
-        with st.form("login_form"):
-            email = st.text_input("البريد الإلكتروني", placeholder="example@example.com")
-            password = st.text_input("كلمة المرور", type="password", placeholder="أدخل كلمة المرور")
+        # التحويل بين تسجيل الدخول وإنشاء حساب
+        if st.session_state.get('show_register', False):
+            # نموذج إنشاء حساب
+            st.markdown('<h2 class="auth-title">إنشاء حساب جديد</h2>', unsafe_allow_html=True)
+            st.markdown('<p class="auth-subtitle">املأ البيانات لإنشاء حسابك</p>', unsafe_allow_html=True)
             
-            submitted = st.form_submit_button("تسجيل الدخول")
+            with st.form("register_form"):
+                name = st.text_input("الاسم الكامل", placeholder="أدخل اسمك الكامل")
+                email = st.text_input("البريد الإلكتروني", placeholder="example@example.com")
+                birth_date = st.date_input("تاريخ الميلاد", min_value=date(1900, 1, 1))
+                password = st.text_input("كلمة المرور", type="password", placeholder="8 أحرف على الأقل")
+                confirm_password = st.text_input("تأكيد كلمة المرور", type="password", placeholder="أعد إدخال كلمة المرور")
+                
+                submitted = st.form_submit_button("إنشاء الحساب")
+                
+                if submitted:
+                    age = relativedelta(date.today(), birth_date).years
+                    if age < 18:
+                        st.markdown('<p class="error-msg">يجب أن يكون عمرك 18 عاماً أو أكثر</p>', unsafe_allow_html=True)
+                    elif password != confirm_password:
+                        st.markdown('<p class="error-msg">كلمة المرور غير متطابقة</p>', unsafe_allow_html=True)
+                    elif email in st.session_state.users_db:
+                        st.markdown('<p class="error-msg">هذا البريد الإلكتروني مسجل بالفعل</p>', unsafe_allow_html=True)
+                    else:
+                        st.session_state.users_db[email] = {
+                            'name': name,
+                            'password': hashlib.sha256(password.encode()).hexdigest(),
+                            'birth_date': birth_date
+                        }
+                        st.markdown('<p class="success-msg">تم إنشاء الحساب بنجاح</p>', unsafe_allow_html=True)
+                        st.session_state.show_register = False
+                        st.rerun()
             
-            if submitted:
-                if email in st.session_state.users_db and \
-                        hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
-                    st.session_state.logged_in = True
-                    st.session_state.current_user = {
-                        'email': email,
-                        'name': st.session_state.users_db[email]['name']
-                    }
-                    st.markdown('<p class="success-message">جاري تحويلك...</p>', unsafe_allow_html=True)
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.markdown('<p class="error-message">بيانات الدخول غير صحيحة</p>', unsafe_allow_html=True)
-        
-        st.markdown("""
-            <div class="auth-footer">
-                ليس لديك حساب؟ <a href="#" onclick="window.streamlitApi.setComponentValue('go_to_register')">إنشاء حساب جديد</a>
+            st.markdown("""
+            <div class="auth-toggle">
+                لديك حساب بالفعل؟ <a onclick="window.streamlitApi.setComponentValue('toggle_login')">تسجيل الدخول</a>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+        
+        else:
+            # نموذج تسجيل الدخول
+            st.markdown('<h2 class="auth-title">تسجيل الدخول</h2>', unsafe_allow_html=True)
+            st.markdown('<p class="auth-subtitle">أدخل بياناتك للوصول إلى حسابك</p>', unsafe_allow_html=True)
+            
+            with st.form("login_form"):
+                email = st.text_input("البريد الإلكتروني", placeholder="example@example.com")
+                password = st.text_input("كلمة المرور", type="password", placeholder="أدخل كلمة المرور")
+                
+                submitted = st.form_submit_button("تسجيل الدخول")
+                
+                if submitted:
+                    if email in st.session_state.users_db and \
+                            hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
+                        st.session_state.logged_in = True
+                        st.session_state.current_user = {
+                            'email': email,
+                            'name': st.session_state.users_db[email]['name']
+                        }
+                        st.markdown('<p class="success-msg">جاري تحويلك...</p>', unsafe_allow_html=True)
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.markdown('<p class="error-msg">بيانات الدخول غير صحيحة</p>', unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div class="auth-toggle">
+                ليس لديك حساب؟ <a onclick="window.streamlitApi.setComponentValue('toggle_register')">إنشاء حساب جديد</a>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# باقي الكود كما هو (الجزء الخاص بالداشبورد بعد التسجيل)
-# ... [يتبع باقي الكود الأصلي دون تغيير]
+# باقي الكود (الجزء الخاص بالداشبورد بعد التسجيل)
+# ... [يتبع باقي الكود الأصلي مع التعديلات اللازمة]
 
 if __name__ == "__main__":
     app()

@@ -7,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
-LOGIN_LOGO = "https://www2.0zz0.com/2025/04/28/19/583882920.png"
+LOGIN_LOGO = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
 
 # تهيئة النموذج باستخدام مفتاح API من الـ secrets
 genai.configure(api_key=st.secrets["API_KEY"])

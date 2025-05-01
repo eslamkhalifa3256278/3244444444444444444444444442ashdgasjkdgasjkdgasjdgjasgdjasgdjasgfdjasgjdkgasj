@@ -1,164 +1,222 @@
 import streamlit as st
-from datetime import datetime
+import google.generativeai as genai
+from datetime import datetime, date
+import hashlib
 import time
+from dateutil.relativedelta import relativedelta
 
-def maintenance_page():
+# إعدادات التطبيق
+LOGO_URL = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
+LOGIN_LOGO = "https://www2.0zz0.com/2025/04/28/19/583882920.png"
+
+# تهيئة النموذج باستخدام مفتاح API من الـ secrets
+genai.configure(api_key=st.secrets["API_KEY"])
+model = genai.GenerativeModel('gemini-2.0-flash')
+
+# قاعدة بيانات المستخدمين (مؤقتة)
+if 'users_db' not in st.session_state:
+    st.session_state.users_db = {}
+
+# إعداد واجهة المستخدم
+def app():
     st.set_page_config(
-        page_title="LEO Chat -  تحت الصيانة ",
-        page_icon="🔧",
-        layout="centered"
+        page_title="LEO Chat",
+        page_icon=LOGIN_LOGO,
+        layout="wide",
+        initial_sidebar_state="expanded"
     )
-    
-    # CSS مخصص لصفحة الصيانة
-    st.markdown("""
-    <style>
-        .maintenance-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 3rem;
-            text-align: center;
-            border-radius: 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        .maintenance-header {
-            margin-bottom: 2rem;
-        }
-        .maintenance-header h1 {
-            color: #2c3e50;
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-        .maintenance-icon {
-            font-size: 5rem;
-            margin-bottom: 1.5rem;
-            color: #e74c3c;
-        }
-        .maintenance-content {
-            margin-bottom: 2rem;
-            line-height: 1.8;
-            color: #34495e;
-        }
-        .progress-container {
-            height: 20px;
-            background: #ecf0f1;
-            border-radius: 10px;
-            margin: 2rem 0;
-            overflow: hidden;
-        }
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #3498db, #2ecc71);
-            width: 0;
-            transition: width 1s ease-in-out;
-            border-radius: 10px;
-        }
-        .countdown {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #e74c3c;
-            margin: 1rem 0;
-        }
-        .social-links {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-        .social-link {
-            padding: 0.5rem 1rem;
-            background: #3498db;
-            color: white;
-            border-radius: 5px;
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-        .social-link:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-        }
-        .contact-info {
-            margin-top: 2rem;
-            padding: 1rem;
-            background: rgba(255,255,255,0.7);
-            border-radius: 10px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # تاريخ ووقت الصيانة
-    maintenance_start = datetime(2025, 5, 15, 10, 0)  # تاريخ بدء الصيانة
-    maintenance_end = datetime(2025, 5, 15, 16, 0)   # تاريخ انتهاء الصيانة
-    now = datetime.now()
-    
-    # حساب وقت الصيانة المتبقي
-    if now < maintenance_start:
-        status = "قيد الإعداد"
-        time_left = maintenance_start - now
-        progress = 0
-    elif now < maintenance_end:
-        status = "جارية"
-        time_left = maintenance_end - now
-        total_seconds = (maintenance_end - maintenance_start).total_seconds()
-        elapsed_seconds = (now - maintenance_start).total_seconds()
-        progress = min(100, (elapsed_seconds / total_seconds) * 100)
-    else:
-        status = "تم الانتهاء"
-        time_left = None
-        progress = 100
-    
-    # واجهة صفحة الصيانة
-    with st.container():
-        st.markdown("""
-        <div class="maintenance-container">
-            <div class="maintenance-header">
-                <div class="maintenance-icon">🔧</div>
-                <h1>التطبيق قيد الصيانة</h1>
-            </div>
-            
-            <div class="maintenance-content">
-                <p>نقوم حاليًا بإجراء بعض التحديثات والتطويرات على النظام لتحسين تجربتك.</p>
-                <p>نعتذر عن أي إزعاج وسنعود قريبًا بإصدار أفضل!</p>
-            </div>
-            
-            <div style="margin: 2rem 0;">
-                <h3>حالة الصيانة: <strong>{}</strong></h3>
-                <div class="progress-container">
-                    <div class="progress-bar" style="width: {}%;"></div>
-                </div>
-            </div>
-        """.format(status, progress), unsafe_allow_html=True)
-        
-        if time_left:
-            hours, remainder = divmod(time_left.seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            st.markdown(f"""
-            <div class="countdown">
-                الوقت المتبقي: {hours} ساعة {minutes} دقيقة {seconds} ثانية
+
+    if "uploaded_files" not in st.session_state:
+        st.session_state.uploaded_files = 0
+        st.session_state.max_files_per_day = 2
+        st.session_state.last_upload_date = None
+
+    def create_account():
+        st.markdown(f"""
+            <div style='text-align:center; margin-bottom: 20px;'>
+                <img src="{LOGIN_LOGO}" width="120">
+                <h2 style='color:#4B4B4B;'>إنشاء حساب جديد</h2>
             </div>
             """, unsafe_allow_html=True)
-        
+
+        with st.form("إنشاء حساب جديد"):
+            name = st.text_input("👤 الاسم الكامل")
+            email = st.text_input("📧 البريد الإلكتروني")
+            birth_date = st.date_input("🎂 تاريخ الميلاد", min_value=date(1900, 1, 1))
+            password = st.text_input("🔒 كلمة المرور", type="password")
+            confirm_password = st.text_input("✅ تأكيد كلمة المرور", type="password")
+
+            submitted = st.form_submit_button("إنشاء الحساب ✨")
+            if submitted:
+                age = relativedelta(date.today(), birth_date).years
+                if age < 18:
+                    st.error("❌ يجب أن يكون عمرك 18 عاماً أو أكثر")
+                elif password != confirm_password:
+                    st.error("❌ كلمة المرور غير متطابقة")
+                elif email in st.session_state.users_db:
+                    st.error("❌ هذا البريد الإلكتروني مسجل بالفعل")
+                else:
+                    st.session_state.users_db[email] = {
+                        'name': name,
+                        'password': hashlib.sha256(password.encode()).hexdigest(),
+                        'birth_date': birth_date
+                    }
+                    st.success("✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
+                    time.sleep(2)
+                    st.session_state.current_page = "login"
+                    st.rerun()
+
+    def login_page():
+        st.markdown(f"""
+            <div style='text-align:center; margin-bottom: 20px;'>
+                <img src="{LOGIN_LOGO}" width="120">
+                <h2 style='color:#4B4B4B;'>تسجيل الدخول</h2>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with st.form("تسجيل الدخول"):
+            email = st.text_input("📧 البريد الإلكتروني")
+            password = st.text_input("🔒 كلمة المرور", type="password")
+
+            submitted = st.form_submit_button("تسجيل الدخول ✅")
+            if submitted:
+                if email in st.session_state.users_db and \
+                        hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
+                    st.session_state.logged_in = True
+                    st.session_state.current_user = {
+                        'email': email,
+                        'name': st.session_state.users_db[email]['name']
+                    }
+                    st.success("✅ تم تسجيل الدخول بنجاح!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ بيانات الدخول غير صحيحة")
+
+    def info_page():
+        st.title("معلومات عن التطبيق")
         st.markdown("""
-            <div class="contact-info">
-                <h4>للتواصل خلال فترة الصيانة:</h4>
-                <p>📧 البريد الإلكتروني: support@leochat.com</p>
-                <p>📞 الهاتف: 01028799352</p>
-            </div>
-            
-            <div class="social-links">
-                <a href="#" class="social-link">تويتر</a>
-                <a href="#" class="social-link">فيسبوك</a>
-                <a href="#" class="social-link">إنستجرام</a>
-            </div>
+        <div style="background-color:#f0f2f6;padding:20px;border-radius:10px">
+            <h3>LEO Chat</h3>
+            <p>تم تطوير هذا التطبيق بواسطة <strong>إسلام خليفة</strong></p>
+            <p>الجنسية: مصري</p>
+            <p>للتواصل: 01028799352</p>
+            <p>الإصدار: 1.0</p>
         </div>
         """, unsafe_allow_html=True)
-    
-    # تأثيرات حركية للشريط التقدمي
-    if st.session_state.get('progress', 0) < progress:
-        for i in range(int(st.session_state.get('progress', 0)), int(progress) + 1):
-            st.session_state.progress = i
-            time.sleep(0.02)
-            st.rerun()
+
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "login"
+
+    if 'logged_in' in st.session_state and st.session_state.logged_in:
+        with st.sidebar:
+            st.image(LOGO_URL, width=200)
+            st.markdown(f"### مرحباً، {st.session_state.current_user['name']}")
+            st.markdown(f"**البريد:** {st.session_state.current_user['email']}")
+
+            if st.button("🚪 تسجيل الخروج", type="primary", help="انقر لتسجيل الخروج"):
+                st.session_state.logged_in = False
+                st.rerun()
+
+            st.markdown("---")
+
+            if st.button("🔄 بدء محادثة جديدة"):
+                st.session_state.messages = []
+                st.rerun()
+
+            st.markdown("---")
+            st.subheader("آخر المحادثات")
+
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            if not st.session_state.messages:
+                st.caption("لا توجد محادثات سابقة")
+            else:
+                for i, msg in enumerate(reversed(st.session_state.messages[-5:])):
+                    if msg["role"] == "user":
+                        with st.container(border=True):
+                            st.caption(f"المحادثة {len(st.session_state.messages[-5:]) - i}")
+                            st.markdown(f"**{msg['content'][:30]}...**")
+
+            st.markdown("---")
+            if st.button("ℹ️ معلومات عن التطبيق"):
+                st.session_state.show_info = True
+                st.rerun()
+
+    if 'logged_in' not in st.session_state or not st.session_state.logged_in:
+        if st.session_state.current_page == "login":
+            login_page()
+            if st.button("إنشاء حساب جديد"):
+                st.session_state.current_page = "create_account"
+                st.rerun()
+        elif st.session_state.current_page == "create_account":
+            create_account()
+            if st.button("العودة لتسجيل الدخول"):
+                st.session_state.current_page = "login"
+                st.rerun()
+    else:
+        if 'show_info' in st.session_state and st.session_state.show_info:
+            info_page()
+            if st.button("العودة للرئيسية"):
+                st.session_state.show_info = False
+                st.rerun()
+        else:
+            col1, col2 = st.columns([0.1, 0.9])
+            with col1:
+                st.image(LOGO_URL, width=80)
+            with col2:
+                st.title("LEO Chat")
+
+            if "logged_in" in st.session_state and st.session_state.logged_in:
+                uploaded_file = st.file_uploader(
+                    "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
+                    type=["pdf", "txt", "docx"],
+                    accept_multiple_files=False,
+                    key="file_uploader"
+                )
+
+                if uploaded_file:
+                    current_date = datetime.now().date()
+                    if st.session_state.last_upload_date != current_date:
+                        st.session_state.uploaded_files = 0
+                        st.session_state.last_upload_date = current_date
+
+                    if st.session_state.uploaded_files < st.session_state.max_files_per_day:
+                        st.session_state.uploaded_files += 1
+                        st.success(
+                            f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
+                    else:
+                        st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
+
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            for message in st.session_state.messages:
+                avatar = LOGIN_LOGO if message["role"] == "assistant" else "👤"
+                with st.chat_message(message["role"], avatar=avatar):
+                    st.markdown(message["content"])
+
+            if prompt := st.chat_input("اكتب رسالتك هنا..."):
+                if "logged_in" not in st.session_state or not st.session_state.logged_in:
+                    st.warning("الرجاء تسجيل الدخول لإرسال الرسائل")
+                else:
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    with st.spinner("جارٍ إعداد الرد..."):
+                        try:
+                            response = model.generate_content(prompt)
+                            reply = response.text
+                            st.session_state.messages.append({"role": "assistant", "content": reply})
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"حدث خطأ: {str(e)}")
+
+            st.markdown("---")
+            st.caption("""
+            <div style="text-align: center; font-size: 14px;">
+                تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
+            </div>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    maintenance_page() 
+    app()

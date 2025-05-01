@@ -4,19 +4,105 @@ from datetime import datetime, date
 import hashlib
 import time
 from dateutil.relativedelta import relativedelta
+import firebase_admin
+from firebase_admin import credentials, firestore, auth
+from firebase_admin.exceptions import FirebaseError
+import re
+import smtplib
+from email.mime.text import MIMEText
+import random
+import string
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/04/26/20/375098708.png"
 API_KEY = "AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaWw"
 
+# إعدادات البريد الإلكتروني (لإعادة تعيين كلمة المرور)
+EMAIL_CONFIG = {
+    'sender': 'your_email@example.com',
+    'password': 'your_email_password',
+    'smtp_server': 'smtp.example.com',
+    'smtp_port': 587
+}
+
 # تهيئة النموذج
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-2.0-flash')
 
-# قاعدة بيانات المستخدمين (في الواقع يجب أن تكون قاعدة بيانات حقيقية)
-if 'users_db' not in st.session_state:
-    st.session_state.users_db = {}
+# تهيئة Firebase
+FIREBASE_CONFIG = {
+    "apiKey": "AIzaSyBFYADCyytqgbSenbgIfOHxvP_4fV_Qais",
+    "authDomain": "leoai-924b5.firebaseapp.com",
+    "projectId": "leoai-924b5",
+    "storageBucket": "leoai-924b5.firebasestorage.app",
+    "messagingSenderId": "997032037109",
+    "appId": "1:997032037109:web:25a701d30dffe9f8d2d3bc"
+}
 
+# إنشاء بيانات الاعتبارات من التكوين
+firebase_creds = {
+    "type": "service_account",
+    "project_id": FIREBASE_CONFIG["projectId"],
+    "private_key_id": "YOUR_PRIVATE_KEY_ID",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n",
+    "client_email": f"firebase-adminsdk-abcdef@{FIREBASE_CONFIG['projectId']}.iam.gserviceaccount.com",
+    "client_id": "123456789012345678901",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-abcdef%40{FIREBASE_CONFIG['projectId']}.iam.gserviceaccount.com"
+}
+
+try:
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(firebase_creds)
+        firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    auth = auth
+except Exception as e:
+    st.error(f"فشل في تهيئة Firebase: {str(e)}")
+
+# وظيفة التحقق من صحة البريد الإلكتروني
+def is_valid_email(email):
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+# وظيفة إرسال بريد إلكتروني لإعادة تعيين كلمة المرور
+def send_password_reset_email(email, reset_token):
+    try:
+        reset_link = f"http://your-app-url.com/reset-password?token={reset_token}"
+        message = f"""
+        مرحباً،
+        
+        لقد طلبت إعادة تعيين كلمة المرور لحسابك في LEO Chat.
+        الرجاء النقر على الرابط التالي لإعادة تعيين كلمة المرور:
+        
+        {reset_link}
+        
+        إذا لم تطلب هذا التغيير، يمكنك تجاهل هذا البريد الإلكتروني.
+        
+        مع تحيات،
+        فريق LEO Chat
+        """
+        
+        msg = MIMEText(message)
+        msg['Subject'] = 'إعادة تعيين كلمة المرور - LEO Chat'
+        msg['From'] = EMAIL_CONFIG['sender']
+        msg['To'] = email
+        
+        with smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port']) as server:
+            server.starttls()
+            server.login(EMAIL_CONFIG['sender'], EMAIL_CONFIG['password'])
+            server.sendmail(EMAIL_CONFIG['sender'], [email], msg.as_string())
+        
+        return True
+    except Exception as e:
+        st.error(f"فشل في إرسال البريد الإلكتروني: {str(e)}")
+        return False
+
+# وظيفة إنشاء رمز إعادة تعيين
+def generate_reset_token():
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=32))
 
 # إعداد واجهة المستخدم
 def app():
@@ -27,12 +113,54 @@ def app():
         initial_sidebar_state="expanded"
     )
 
+    # تحميل حالة "تذكرني" من الجلسة
+    if 'remember_me' not in st.session_state:
+        st.session_state.remember_me = False
+
     # إدارة الملفات
     if "uploaded_files" not in st.session_state:
         st.session_state.uploaded_files = 0
         st.session_state.max_files_per_day = 2
         st.session_state.last_upload_date = None
         st.session_state.uploaded_files_list = []
+
+    # صفحة إعادة تعيين كلمة المرور
+    def reset_password_page():
+        st.title("إعادة تعيين كلمة المرور")
+        
+        with st.form("reset_password_form"):
+            email = st.text_input("البريد الإلكتروني", placeholder="أدخل بريدك الإلكتروني المسجل")
+            submit_button = st.form_submit_button("إرسال رابط إعادة التعيين")
+            
+            if submit_button:
+                if not is_valid_email(email):
+                    st.error("البريد الإلكتروني غير صحيح")
+                else:
+                    try:
+                        user_ref = db.collection('users').document(email)
+                        user_data = user_ref.get()
+                        
+                        if user_data.exists:
+                            reset_token = generate_reset_token()
+                            # حفظ الرمز في قاعدة البيانات مع تاريخ انتهاء الصلاحية
+                            user_ref.update({
+                                'reset_token': reset_token,
+                                'reset_token_expiry': datetime.now().timestamp() + 3600  # صلاحية ساعة واحدة
+                            })
+                            
+                            if send_password_reset_email(email, reset_token):
+                                st.success("تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني")
+                                time.sleep(2)
+                                st.session_state.current_page = "login"
+                                st.rerun()
+                        else:
+                            st.error("البريد الإلكتروني غير مسجل")
+                    except Exception as e:
+                        st.error(f"حدث خطأ: {str(e)}")
+        
+        if st.button("العودة لتسجيل الدخول"):
+            st.session_state.current_page = "login"
+            st.rerun()
 
     # صفحة إنشاء حساب (التصميم الجديد)
     def create_account():
@@ -50,7 +178,7 @@ def app():
                 name = st.text_input("الاسم الكامل", placeholder="أدخل اسمك الكامل")
                 email = st.text_input("البريد الإلكتروني", placeholder="أدخل بريدك الإلكتروني")
                 birth_date = st.date_input("تاريخ الميلاد", min_value=date(1900, 1, 1))
-                password = st.text_input("كلمة المرور", type="password", placeholder="أدخل كلمة مرور قوية")
+                password = st.text_input("كلمة المرور", type="password", placeholder="أدخل كلمة مرور قوية (5 أحرف على الأقل)")
                 confirm_password = st.text_input("تأكيد كلمة المرور", type="password", placeholder="أعد إدخال كلمة المرور")
                 
                 submit_button = st.form_submit_button("إنشاء الحساب", type="primary")
@@ -59,20 +187,31 @@ def app():
                     age = relativedelta(date.today(), birth_date).years
                     if age < 18:
                         st.error("🥺يجب أن يكون عمرك 18 عاماً أو أكثر")
+                    elif len(password) < 5:
+                        st.error("كلمة المرور يجب أن تحتوي على الأقل على 5 أحرف")
                     elif password != confirm_password:
                         st.error("🤦‍♂️كلمة المرور غير متطابقة")
-                    elif email in st.session_state.users_db:
-                        st.error("🤦‍♂️هذا البريد الإلكتروني مسجل بالفعل")
+                    elif not is_valid_email(email):
+                        st.error("البريد الإلكتروني غير صحيح")
                     else:
-                        st.session_state.users_db[email] = {
-                            'name': name,
-                            'password': hashlib.sha256(password.encode()).hexdigest(),
-                            'birth_date': birth_date
-                        }
-                        st.success("☺️تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
-                        time.sleep(2)
-                        st.session_state.current_page = "login"
-                        st.rerun()
+                        try:
+                            user_ref = db.collection('users').document(email)
+                            if user_ref.get().exists:
+                                st.error("🤦‍♂️هذا البريد الإلكتروني مسجل بالفعل")
+                            else:
+                                user_data = {
+                                    'name': name,
+                                    'password': hashlib.sha256(password.encode()).hexdigest(),
+                                    'birth_date': birth_date.strftime('%Y-%m-%d'),
+                                    'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                }
+                                user_ref.set(user_data)
+                                st.success("☺️تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
+                                time.sleep(2)
+                                st.session_state.current_page = "login"
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"حدث خطأ: {str(e)}")
             
             st.markdown("""
             </div>
@@ -99,22 +238,33 @@ def app():
             with st.form("😉تسجيل الدخول"):
                 email = st.text_input("البريد الإلكتروني", placeholder="أدخل بريدك الإلكتروني")
                 password = st.text_input("كلمة المرور", type="password", placeholder="أدخل كلمة المرور")
+                remember_me = st.checkbox("تذكرني", value=st.session_state.remember_me)
                 
                 submit_button = st.form_submit_button("تسجيل الدخول", type="primary")
                 
                 if submit_button:
-                    if email in st.session_state.users_db and \
-                            hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
-                        st.session_state.logged_in = True
-                        st.session_state.current_user = {
-                            'email': email,
-                            'name': st.session_state.users_db[email]['name']
-                        }
-                        st.success("تم تسجيل الدخول بنجاح!☺️")
-                        time.sleep(1)
-                        st.rerun()
+                    if not is_valid_email(email):
+                        st.error("البريد الإلكتروني غير صحيح")
                     else:
-                        st.error("بيانات الدخول غير صحيحة")
+                        try:
+                            user_ref = db.collection('users').document(email)
+                            user_data = user_ref.get()
+                            
+                            if user_data.exists and \
+                                    hashlib.sha256(password.encode()).hexdigest() == user_data.to_dict().get('password'):
+                                st.session_state.logged_in = True
+                                st.session_state.current_user = {
+                                    'email': email,
+                                    'name': user_data.to_dict().get('name')
+                                }
+                                st.session_state.remember_me = remember_me
+                                st.success("تم تسجيل الدخول بنجاح!☺️")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error("بيانات الدخول غير صحيحة")
+                        except Exception as e:
+                            st.error(f"حدث خطأ: {str(e)}")
             
             st.markdown("""
             </div>
@@ -122,9 +272,15 @@ def app():
                 <p style="color:#7f8c8d">ليس لديك حساب يا صديقي/ة!!</p>
             """, unsafe_allow_html=True)
             
-            if st.button("إنشاء حساب جديد", key="go_to_register"):
-                st.session_state.current_page = "create_account"
-                st.rerun()
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("إنشاء حساب جديد", key="go_to_register"):
+                    st.session_state.current_page = "create_account"
+                    st.rerun()
+            with col2:
+                if st.button("نسيت كلمة المرور؟", key="forgot_password"):
+                    st.session_state.current_page = "reset_password"
+                    st.rerun()
 
     # صفحة المعلومات
     def info_page():
@@ -141,7 +297,7 @@ def app():
 
     # إدارة الصفحات
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = "login" if not st.session_state.users_db else "login"
+        st.session_state.current_page = "login"
 
     # الشريط الجانبي للمستخدم المسجل
     if 'logged_in' in st.session_state and st.session_state.logged_in:
@@ -152,6 +308,7 @@ def app():
 
             if st.button("🚪 تسجيل الخروج", type="primary", help="انقر لتسجيل الخروج"):
                 st.session_state.logged_in = False
+                st.session_state.remember_me = False
                 st.rerun()
 
             st.markdown("---")
@@ -186,6 +343,8 @@ def app():
             login_page()
         elif st.session_state.current_page == "create_account":
             create_account()
+        elif st.session_state.current_page == "reset_password":
+            reset_password_page()
     else:
         if 'show_info' in st.session_state and st.session_state.show_info:
             info_page()
@@ -332,7 +491,7 @@ def app():
             st.markdown("""
             <div style="margin-top: 50px; padding: 15px; background-color: #f0f2f6; border-radius: 8px; text-align: center;">
                 <p style="margin: 0; font-size: 14px; color: #555;">
-                    تم التطوير بواسطة <strong>Your Developer Name</strong> | نموذج <strong>Your Model Name</strong> 1.0
+                    تم التطوير بواسطة <strong>إسلام خليفة</strong> | نموذج <strong>Gemini</strong> 1.0
                 </p>
             </div>
             """, unsafe_allow_html=True)

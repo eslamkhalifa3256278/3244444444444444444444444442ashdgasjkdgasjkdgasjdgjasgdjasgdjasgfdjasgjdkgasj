@@ -34,7 +34,7 @@ def app():
     def create_account():
         st.markdown(f"""
             <div style='text-align:center; margin-bottom: 20px;'>
-                <img src="{LOGIN_LOGO}" width="120">
+                <img src="{LOGIN_LOGO}" width="300">
                 <h2 style='color:#4B4B4B;'>إنشاء حساب جديد</h2>
             </div>
             """, unsafe_allow_html=True)
@@ -69,7 +69,7 @@ def app():
     def login_page():
         st.markdown(f"""
             <div style='text-align:center; margin-bottom: 20px;'>
-                <img src="{LOGIN_LOGO}" width="120">
+                <img src="{LOGIN_LOGO}" width="300">
                 <h2 style='color:#4B4B4B;'>تسجيل الدخول</h2>
             </div>
             """, unsafe_allow_html=True)

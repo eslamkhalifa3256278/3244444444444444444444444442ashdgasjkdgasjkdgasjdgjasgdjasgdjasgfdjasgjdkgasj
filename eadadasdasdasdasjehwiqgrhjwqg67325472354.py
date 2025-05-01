@@ -1,107 +1,124 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 def maintenance_page():
     st.set_page_config(
-        page_title="LEO Chat - الصيانة",
+        page_title="Yap STS - الصيانة",
         page_icon="🔧",
         layout="centered"
     )
     
+    # إعداد تواريخ الصيانة
+    maintenance_date = datetime.now().replace(hour=13, minute=0, second=0)  # 1 مساءً
+    maintenance_end = maintenance_date + timedelta(hours=4)  # 5 مساءً
+    
     # CSS مخصص لصفحة الصيانة
     st.markdown("""
     <style>
+        :root {
+            --primary-color: #4a6bff;
+            --secondary-color: #ff6b6b;
+        }
+        
         .maintenance-container {
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
-            padding: 3rem;
+            padding: 2rem;
             text-align: center;
-            border-radius: 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            background: white;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
         }
+        
         .maintenance-header {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
+        
         .maintenance-header h1 {
-            color: #2c3e50;
+            color: var(--primary-color);
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .maintenance-header h2 {
+            color: #555;
+            font-size: 1.3rem;
+            font-weight: normal;
+        }
+        
+        .maintenance-divider {
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            margin: 1.5rem 0;
+            border-radius: 3px;
+        }
+        
+        .maintenance-schedule {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+        }
+        
+        .maintenance-schedule h3 {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .maintenance-schedule p {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        
+        .countdown {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 1.5rem 0;
+        }
+        
+        .logo {
             font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
             margin-bottom: 1rem;
         }
-        .maintenance-icon {
-            font-size: 5rem;
-            margin-bottom: 1.5rem;
-            color: #e74c3c;
-        }
-        .maintenance-content {
-            margin-bottom: 2rem;
-            line-height: 1.8;
-            color: #34495e;
-        }
+        
         .progress-container {
-            height: 20px;
-            background: #ecf0f1;
-            border-radius: 10px;
-            margin: 2rem 0;
-            overflow: hidden;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin: 1.5rem 0;
         }
+        
         .progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #3498db, #2ecc71);
-            width: 0;
-            transition: width 1s ease-in-out;
-            border-radius: 10px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
         }
-        .countdown {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #e74c3c;
+        
+        .emoji {
+            font-size: 3rem;
             margin: 1rem 0;
-        }
-        .social-links {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-        .social-link {
-            padding: 0.5rem 1rem;
-            background: #3498db;
-            color: white;
-            border-radius: 5px;
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-        .social-link:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-        }
-        .contact-info {
-            margin-top: 2rem;
-            padding: 1rem;
-            background: rgba(255,255,255,0.7);
-            border-radius: 10px;
         }
     </style>
     """, unsafe_allow_html=True)
     
-    # تاريخ ووقت الصيانة
-    maintenance_start = datetime(2025, 5, 15, 10, 0)  # تاريخ بدء الصيانة
-    maintenance_end = datetime(2025, 5, 15, 16, 0)   # تاريخ انتهاء الصيانة
-    now = datetime.now()
-    
     # حساب وقت الصيانة المتبقي
-    if now < maintenance_start:
+    now = datetime.now()
+    if now < maintenance_date:
         status = "قيد الإعداد"
-        time_left = maintenance_start - now
+        time_left = maintenance_date - now
         progress = 0
     elif now < maintenance_end:
         status = "جارية"
         time_left = maintenance_end - now
-        total_seconds = (maintenance_end - maintenance_start).total_seconds()
-        elapsed_seconds = (now - maintenance_start).total_seconds()
-        progress = min(100, (elapsed_seconds / total_seconds) * 100)
+        total_duration = (maintenance_end - maintenance_date).total_seconds()
+        elapsed = (now - maintenance_date).total_seconds()
+        progress = min(100, (elapsed / total_duration) * 100)
     else:
         status = "تم الانتهاء"
         time_left = None
@@ -111,44 +128,46 @@ def maintenance_page():
     with st.container():
         st.markdown("""
         <div class="maintenance-container">
+            <div class="logo">Yap STS</div>
+            <div class="emoji">🔧</div>
+            
             <div class="maintenance-header">
-                <div class="maintenance-icon">🔧</div>
-                <h1>التطبيق قيد الصيانة</h1>
+                <h1>موقعنا تحت الصيانة</h1>
+                <h2>شوي بين وراجعين...</h2>
             </div>
             
-            <div class="maintenance-content">
-                <p>نقوم حاليًا بإجراء بعض التحديثات والتطويرات على النظام لتحسين تجربتك.</p>
-                <p>نعتذر عن أي إزعاج وسنعود قريبًا بإصدار أفضل!</p>
+            <div class="maintenance-divider"></div>
+            
+            <div class="maintenance-schedule">
+                <h3>12 أغسطس</h3>
+                <p>من 1 - 5 مساءً</p>
             </div>
             
-            <div style="margin: 2rem 0;">
-                <h3>حالة الصيانة: <strong>{}</strong></h3>
-                <div class="progress-container">
-                    <div class="progress-bar" style="width: {}%;"></div>
-                </div>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: {}%"></div>
             </div>
-        """.format(status, progress), unsafe_allow_html=True)
+            
+            <p>تطبيق <strong>Yap STS</strong> راح يكون تحت الصيانة كم ساعة بين وراجعين.</p>
+        """.format(progress), unsafe_allow_html=True)
         
         if time_left:
             hours, remainder = divmod(time_left.seconds, 3600)
             minutes, seconds = divmod(remainder, 60)
             st.markdown(f"""
             <div class="countdown">
-                الوقت المتبقي: {hours} ساعة {minutes} دقيقة {seconds} ثانية
+                {hours} ساعة {minutes} دقيقة {seconds} ثانية
             </div>
             """, unsafe_allow_html=True)
         
         st.markdown("""
-            <div class="contact-info">
-                <h4>للتواصل خلال فترة الصيانة:</h4>
-                <p>📧 البريد الإلكتروني: support@leochat.com</p>
-                <p>📞 الهاتف: 01028799352</p>
-            </div>
+            <div class="maintenance-divider"></div>
             
-            <div class="social-links">
-                <a href="#" class="social-link">تويتر</a>
-                <a href="#" class="social-link">فيسبوك</a>
-                <a href="#" class="social-link">إنستجرام</a>
+            <p style="font-size: 1.2rem; margin-top: 1.5rem;">
+                نشكركم على صبركم وسنعود أقوى من قبل!
+            </p>
+            
+            <div style="margin-top: 2rem;">
+                <strong>فريق Yap STS</strong>
             </div>
         </div>
         """, unsafe_allow_html=True)

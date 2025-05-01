@@ -1,299 +1,164 @@
-from flask import Flask, render_template_string
-import datetime
+import streamlit as st
+from datetime import datetime
 import time
 
-app = Flask(__name__)
-
-# تاريخ ووقت انتهاء الصيانة (اضبطه حسب احتياجك)
-MAINTENANCE_END = datetime.datetime(2023, 12, 31, 23, 59, 59)
-
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الموقع تحت الصيانة</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+def maintenance_page():
+    st.set_page_config(
+        page_title="LEO Chat - الصيانة",
+        page_icon="🔧",
+        layout="centered"
+    )
+    
+    # CSS مخصص لصفحة الصيانة
+    st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Tajawal', sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: #fff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-            overflow-x: hidden;
-        }
-        
         .maintenance-container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 40px;
             max-width: 800px;
-            width: 100%;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-            animation: fadeIn 1.5s ease-in-out;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin: 0 auto;
+            padding: 3rem;
+            text-align: center;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        
-        h1 {
+        .maintenance-header {
+            margin-bottom: 2rem;
+        }
+        .maintenance-header h1 {
+            color: #2c3e50;
             font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: #fff;
-            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            margin-bottom: 1rem;
         }
-        
-        p {
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-            line-height: 1.6;
+        .maintenance-icon {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+            color: #e74c3c;
         }
-        
-        .countdown {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin: 30px 0;
-            flex-wrap: wrap;
+        .maintenance-content {
+            margin-bottom: 2rem;
+            line-height: 1.8;
+            color: #34495e;
         }
-        
-        .countdown-box {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            padding: 20px;
-            min-width: 100px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-        
-        .countdown-box:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        }
-        
-        .countdown-box::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transform: translateX(-100%);
-            animation: shine 3s infinite;
-        }
-        
-        .countdown-value {
-            font-size: 3rem;
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-        }
-        
-        .countdown-label {
-            font-size: 1rem;
-            opacity: 0.8;
-        }
-        
-        .social-icons {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 30px;
-        }
-        
-        .social-icon {
-            color: #fff;
-            font-size: 1.5rem;
-            transition: all 0.3s ease;
-        }
-        
-        .social-icon:hover {
-            transform: scale(1.2);
-            color: #4fc3f7;
-        }
-        
         .progress-container {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.2);
+            height: 20px;
+            background: #ecf0f1;
             border-radius: 10px;
-            margin: 30px 0;
+            margin: 2rem 0;
             overflow: hidden;
         }
-        
         .progress-bar {
-            height: 10px;
-            background: linear-gradient(90deg, #4fc3f7, #00e676);
-            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0;
+            transition: width 1s ease-in-out;
             border-radius: 10px;
-            transition: width 0.5s ease;
-            animation: progressAnimation 2s infinite alternate;
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .countdown {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 1rem 0;
         }
-        
-        @keyframes shine {
-            100% { transform: translateX(100%); }
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
         }
-        
-        @keyframes progressAnimation {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
+        .social-link {
+            padding: 0.5rem 1rem;
+            background: #3498db;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: all 0.3s;
         }
-        
-        .gear {
-            font-size: 3rem;
-            margin-bottom: 20px;
-            animation: spin 5s linear infinite;
+        .social-link:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
         }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        @media (max-width: 768px) {
-            .maintenance-container {
-                padding: 30px 20px;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
-            
-            p {
-                font-size: 1rem;
-            }
-            
-            .countdown-box {
-                min-width: 80px;
-                padding: 15px;
-            }
-            
-            .countdown-value {
-                font-size: 2rem;
-            }
+        .contact-info {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255,255,255,0.7);
+            border-radius: 10px;
         }
     </style>
-</head>
-<body>
-    <div class="maintenance-container">
-        <div class="gear">
-            <i class="fas fa-cog"></i>
-            <i class="fas fa-cog" style="margin-right: 15px; animation-direction: reverse;"></i>
-            <i class="fas fa-cog"></i>
-        </div>
-        
-        <h1>الموقع تحت الصيانة</h1>
-        <p>نقوم حاليًا بإجراء بعض التحديثات والتطويرات على الموقع لتحسين تجربتك. نعتذر للإزعاج وسنعود قريبًا!</p>
-        
-        <div class="progress-container">
-            <div class="progress-bar" id="progressBar"></div>
-        </div>
-        
-        <div class="countdown">
-            <div class="countdown-box">
-                <span class="countdown-value" id="days">00</span>
-                <span class="countdown-label">أيام</span>
-            </div>
-            <div class="countdown-box">
-                <span class="countdown-value" id="hours">00</span>
-                <span class="countdown-label">ساعات</span>
-            </div>
-            <div class="countdown-box">
-                <span class="countdown-value" id="minutes">00</span>
-                <span class="countdown-label">دقائق</span>
-            </div>
-            <div class="countdown-box">
-                <span class="countdown-value" id="seconds">00</span>
-                <span class="countdown-label">ثواني</span>
-            </div>
-        </div>
-        
-        <p>يمكنك متابعتنا على وسائل التواصل الاجتماعي للاطلاع على آخر التحديثات</p>
-        
-        <div class="social-icons">
-            <a href="#" class="social-icon"><i class="fab fa-facebook"></i></a>
-            <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-            <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-            <a href="#" class="social-icon"><i class="fab fa-linkedin"></i></a>
-        </div>
-    </div>
-
-    <script>
-        // تاريخ ووقت انتهاء الصيانة (يجب أن يتطابق مع الوقت في السيرفر)
-        const endDate = new Date("{{ end_date }}").getTime();
-        
-        function updateCountdown() {
-            const now = new Date().getTime();
-            const distance = endDate - now;
-            
-            // حساب الوقت المتبقي
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-            
-            // عرض النتائج
-            document.getElementById("days").innerHTML = days.toString().padStart(2, "0");
-            document.getElementById("hours").innerHTML = hours.toString().padStart(2, "0");
-            document.getElementById("minutes").innerHTML = minutes.toString().padStart(2, "0");
-            document.getElementById("seconds").innerHTML = seconds.toString().padStart(2, "0");
-            
-            // حساب نسبة الإكمال
-            const totalDuration = endDate - new Date("{{ start_date }}").getTime();
-            const progress = ((totalDuration - distance) / totalDuration) * 100;
-            document.getElementById("progressBar").style.width = `${Math.min(progress, 100)}%`;
-            
-            // إذا انتهى الوقت
-            if (distance < 0) {
-                clearInterval(countdownTimer);
-                document.querySelector(".countdown").innerHTML = "<h2>الصيانة انتهت! نعود قريبًا...</h2>";
-                document.getElementById("progressBar").style.width = "100%";
-            }
-        }
-        
-        // تحديث العداد كل ثانية
-        const countdownTimer = setInterval(updateCountdown, 1000);
-        updateCountdown(); // التشغيل الأولي
-    </script>
-</body>
-</html>
-"""
-
-@app.route('/')
-def maintenance_page():
-    # حساب الوقت المتبقي
-    now = datetime.datetime.now()
-    time_remaining = MAINTENANCE_END - now
+    """, unsafe_allow_html=True)
     
-    # إذا انتهى وقت الصيانة، يمكنك توجيه المستخدم للصفحة الرئيسية
-    if time_remaining.total_seconds() <= 0:
-        return "الصيانة انتهت! نعود قريبًا..."
+    # تاريخ ووقت الصيانة
+    maintenance_start = datetime(2025, 5, 15, 10, 0)  # تاريخ بدء الصيانة
+    maintenance_end = datetime(2025, 5, 15, 16, 0)   # تاريخ انتهاء الصيانة
+    now = datetime.now()
     
-    # تقديم صفحة الصيانة مع البيانات المطلوبة
-    return render_template_string(HTML_TEMPLATE, 
-                               end_date=MAINTENANCE_END.strftime("%Y-%m-%dT%H:%M:%S"),
-                               start_date=now.strftime("%Y-%m-%dT%H:%M:%S"))
+    # حساب وقت الصيانة المتبقي
+    if now < maintenance_start:
+        status = "قيد الإعداد"
+        time_left = maintenance_start - now
+        progress = 0
+    elif now < maintenance_end:
+        status = "جارية"
+        time_left = maintenance_end - now
+        total_seconds = (maintenance_end - maintenance_start).total_seconds()
+        elapsed_seconds = (now - maintenance_start).total_seconds()
+        progress = min(100, (elapsed_seconds / total_seconds) * 100)
+    else:
+        status = "تم الانتهاء"
+        time_left = None
+        progress = 100
+    
+    # واجهة صفحة الصيانة
+    with st.container():
+        st.markdown("""
+        <div class="maintenance-container">
+            <div class="maintenance-header">
+                <div class="maintenance-icon">🔧</div>
+                <h1>التطبيق قيد الصيانة</h1>
+            </div>
+            
+            <div class="maintenance-content">
+                <p>نقوم حاليًا بإجراء بعض التحديثات والتطويرات على النظام لتحسين تجربتك.</p>
+                <p>نعتذر عن أي إزعاج وسنعود قريبًا بإصدار أفضل!</p>
+            </div>
+            
+            <div style="margin: 2rem 0;">
+                <h3>حالة الصيانة: <strong>{}</strong></h3>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: {}%;"></div>
+                </div>
+            </div>
+        """.format(status, progress), unsafe_allow_html=True)
+        
+        if time_left:
+            hours, remainder = divmod(time_left.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            st.markdown(f"""
+            <div class="countdown">
+                الوقت المتبقي: {hours} ساعة {minutes} دقيقة {seconds} ثانية
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("""
+            <div class="contact-info">
+                <h4>للتواصل خلال فترة الصيانة:</h4>
+                <p>📧 البريد الإلكتروني: support@leochat.com</p>
+                <p>📞 الهاتف: 01028799352</p>
+            </div>
+            
+            <div class="social-links">
+                <a href="#" class="social-link">تويتر</a>
+                <a href="#" class="social-link">فيسبوك</a>
+                <a href="#" class="social-link">إنستجرام</a>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # تأثيرات حركية للشريط التقدمي
+    if st.session_state.get('progress', 0) < progress:
+        for i in range(int(st.session_state.get('progress', 0)), int(progress) + 1):
+            st.session_state.progress = i
+            time.sleep(0.02)
+            st.rerun()
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    maintenance_page()

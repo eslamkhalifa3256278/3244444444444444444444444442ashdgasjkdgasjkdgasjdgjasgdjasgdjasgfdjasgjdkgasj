@@ -5,9 +5,18 @@ import hashlib
 import time
 from dateutil.relativedelta import relativedelta
 
-# إعدادات التطبيق
-LOGO_URL = "https://www2.0zz0.com/2025/05/01/22/992228290.png"
-LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
+# روابط الصور الجديدة
+APP_ICON = "https://www2.0zz0.com/2025/05/08/18/626606131.png"
+BRIGHTNESS_ICON = "https://www2.0zz0.com/2025/05/08/18/933445135.png"
+GOOGLE_ICON = "https://www2.0zz0.com/2025/05/08/18/107156838.png"
+CHAT_LOGO = "https://www2.0zz0.com/2025/05/08/18/375058044.png"
+LOGIN_LOGO = "https://www2.0zz0.com/2025/05/08/18/991791771.png"
+MICROSOFT_ICON = "https://www2.0zz0.com/2025/05/08/18/715988940.png"
+PRINT_ICON = "https://www2.0zz0.com/2025/05/08/18/242891059.png"
+PAPER_PLANE_ICON = "https://www2.0zz0.com/2025/05/08/18/887301745.png"
+NIGHT_MODE_ICON = "https://www2.0zz0.com/2025/05/08/18/785079018.png"
+SETTINGS_BLACK_ICON = "https://www2.0zz0.com/2025/05/08/18/184733537.png"
+SETTINGS_WHITE_ICON = "https://www2.0zz0.com/2025/05/08/18/281369266.png"
 
 # تهيئة النموذج باستخدام مفتاح API من الـ secrets
 genai.configure(api_key=st.secrets["API_KEY"])
@@ -82,6 +91,20 @@ def load_css():
             color: #4285F4;
             text-decoration: none;
         }
+        
+        /* تصميم الأيقونات في الأزرار */
+        .icon-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        /* تصميم زر رفع الملفات */
+        .stFileUploader>div>div>button {
+            background-color: #4285F4 !important;
+            color: white !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -89,7 +112,7 @@ def load_css():
 def app():
     st.set_page_config(
         page_title="LEO Chat",
-        page_icon=LOGIN_LOGO,
+        page_icon=APP_ICON,
         layout="wide",
         initial_sidebar_state="expanded"
     )
@@ -141,10 +164,10 @@ def app():
         st.markdown("أو")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("تسجيل الدخول عبر Google", use_container_width=True):
+            if st.button(f"<img src='{GOOGLE_ICON}' width='20'> تسجيل الدخول عبر Google", use_container_width=True, unsafe_allow_html=True):
                 st.info("هذه الميزة قيد التطوير")
         with col2:
-            if st.button("تسجيل الدخول عبر Microsoft", use_container_width=True):
+            if st.button(f"<img src='{MICROSOFT_ICON}' width='20'> تسجيل الدخول عبر Microsoft", use_container_width=True, unsafe_allow_html=True):
                 st.info("هذه الميزة قيد التطوير")
         st.markdown("---")
         if st.button("لديك حساب بالفعل؟ تسجيل الدخول"):
@@ -182,10 +205,10 @@ def app():
         st.markdown("أو")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("تسجيل الدخول عبر Google", use_container_width=True):
+            if st.button(f"<img src='{GOOGLE_ICON}' width='20'> تسجيل الدخول عبر Google", use_container_width=True, unsafe_allow_html=True):
                 st.info("هذه الميزة قيد التطوير")
         with col2:
-            if st.button("تسجيل الدخول عبر Microsoft", use_container_width=True):
+            if st.button(f"<img src='{MICROSOFT_ICON}' width='20'> تسجيل الدخول عبر Microsoft", use_container_width=True, unsafe_allow_html=True):
                 st.info("هذه الميزة قيد التطوير")
         st.markdown("---")
         if st.button("ليس لديك حساب؟ إنشاء حساب جديد"):
@@ -215,18 +238,18 @@ def app():
 
     if 'logged_in' in st.session_state and st.session_state.logged_in:
         with st.sidebar:
-            st.image(LOGO_URL, width=150)
+            st.image(CHAT_LOGO, width=150)
             st.markdown(f"### مرحباً، {st.session_state.current_user['name']}")
             st.markdown(f"**البريد:** {st.session_state.current_user['email']}")
 
-            if st.button("تسجيل الخروج", use_container_width=True):
+            if st.button(f"<img src='{SETTINGS_BLACK_ICON}' width='20'> تسجيل الخروج", use_container_width=True, unsafe_allow_html=True):
                 st.session_state.logged_in = False
                 st.rerun()
 
             st.markdown("---")
             st.markdown("**المحادثات**")
             
-            if st.button("بدء محادثة جديدة", use_container_width=True):
+            if st.button(f"<img src='{PAPER_PLANE_ICON}' width='20'> بدء محادثة جديدة", use_container_width=True, unsafe_allow_html=True):
                 st.session_state.messages = []
                 st.rerun()
 
@@ -246,7 +269,7 @@ def app():
                             st.markdown(f"{msg['content'][:30]}...")
 
             st.markdown("---")
-            if st.button("معلومات عن التطبيق", use_container_width=True):
+            if st.button(f"<img src='{SETTINGS_WHITE_ICON}' width='20'> معلومات عن التطبيق", use_container_width=True, unsafe_allow_html=True):
                 st.session_state.show_info = True
                 st.rerun()
 
@@ -264,18 +287,23 @@ def app():
         else:
             st.markdown(f"""
                 <div style='text-align:center; margin-bottom: 20px;'>
-                    <img src="{LOGO_URL}" width="100">
+                    <img src="{CHAT_LOGO}" width="100">
                     <h1 style='color:#333;'>LEOAI</h1>
                 </div>
                 """, unsafe_allow_html=True)
 
             if "logged_in" in st.session_state and st.session_state.logged_in:
-                uploaded_file = st.file_uploader(
-                    "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
-                    type=["pdf", "txt", "docx"],
-                    accept_multiple_files=False,
-                    key="file_uploader"
-                )
+                col1, col2 = st.columns([1, 3])
+                with col1:
+                    if st.button(f"<img src='{PRINT_ICON}' width='20'> طباعة", use_container_width=True, unsafe_allow_html=True):
+                        st.info("هذه الميزة قيد التطوير")
+                with col2:
+                    uploaded_file = st.file_uploader(
+                        "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
+                        type=["pdf", "txt", "docx"],
+                        accept_multiple_files=False,
+                        key="file_uploader"
+                    )
 
                 if uploaded_file:
                     current_date = datetime.now().date()

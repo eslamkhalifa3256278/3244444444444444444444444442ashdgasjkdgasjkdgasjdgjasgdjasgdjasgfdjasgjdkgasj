@@ -1,3 +1,4 @@
 
 google-generativeai
 firebase-admin
+PyQt5

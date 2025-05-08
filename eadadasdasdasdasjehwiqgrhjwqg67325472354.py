@@ -1,4 +1,4 @@
-mport streamlit as st
+import streamlit as st
 import google.generativeai as genai
 from datetime import datetime, date
 import hashlib
@@ -11,7 +11,7 @@ LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
 
 # تهيئة النموذج باستخدام مفتاح API من الـ secrets
 genai.configure(api_key=st.secrets["API_KEY"])
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-pro')  # تغيير النموذج إلى gemini-pro
 
 # قاعدة بيانات المستخدمين (مؤقتة)
 if 'users_db' not in st.session_state:
@@ -116,12 +116,14 @@ def app():
 
             if st.button("🚪 تسجيل الخروج", type="primary", help="انقر لتسجيل الخروج"):
                 st.session_state.logged_in = False
+                st.session_state.current_page = "login"  # إضافة هذه السطر
                 st.rerun()
 
             st.markdown("---")
 
             if st.button("🔄 بدء محادثة جديدة"):
-                st.session_state.messages = []
+                if "messages" in st.session_state:
+                    st.session_state.messages = []
                 st.rerun()
 
             st.markdown("---")

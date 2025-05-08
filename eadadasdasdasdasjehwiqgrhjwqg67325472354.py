@@ -17,6 +17,74 @@ model = genai.GenerativeModel('gemini-2.0-flash')
 if 'users_db' not in st.session_state:
     st.session_state.users_db = {}
 
+# CSS مخصص للتصميم الجديد
+def load_css():
+    st.markdown("""
+    <style>
+        /* التصميم العام */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        
+        /* تصميم حقول الإدخال */
+        .stTextInput>div>div>input, 
+        .stPassword>div>div>input,
+        .stDateInput>div>div>input {
+            text-align: right;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        /* تصميم الأزرار */
+        .stButton>button {
+            width: 100%;
+            border-radius: 8px;
+            padding: 10px;
+            font-weight: bold;
+            background-color: #4285F4;
+            color: white;
+            border: none;
+        }
+        
+        /* تصميم البطاقات */
+        .stMarkdown {
+            border-radius: 12px;
+            padding: 15px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* تصميم الشريط الجانبي */
+        [data-testid="stSidebar"] {
+            background-color: white;
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        /* تصميم المحادثة */
+        [data-testid="chatMessage"] {
+            border-radius: 12px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        
+        /* تصميم العناوين */
+        h1, h2, h3 {
+            color: #333;
+            text-align: right;
+        }
+        
+        /* تصميم الروابط */
+        a {
+            color: #4285F4;
+            text-decoration: none;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
 # إعداد واجهة المستخدم
 def app():
     st.set_page_config(
@@ -25,6 +93,8 @@ def app():
         layout="wide",
         initial_sidebar_state="expanded"
     )
+    
+    load_css()  # تحميل CSS المخصص
 
     if "uploaded_files" not in st.session_state:
         st.session_state.uploaded_files = 0
@@ -34,51 +104,66 @@ def app():
     def create_account():
         st.markdown(f"""
             <div style='text-align:center; margin-bottom: 20px;'>
-                <img src="{LOGIN_LOGO}" width="300">
-                <h2 style='color:#4B4B4B;'>إنشاء حساب جديد</h2>
+                <img src="{LOGIN_LOGO}" width="200">
+                <h1 style='color:#333;'>LEO.AI</h1>
             </div>
             """, unsafe_allow_html=True)
 
-        with st.form("إنشاء حساب جديد"):
+        with st.form("إنشاء حساب جديد", clear_on_submit=True):
+            st.markdown("### إنشاء حساب جديد")
             name = st.text_input("👤 الاسم الكامل")
             email = st.text_input("📧 البريد الإلكتروني")
             birth_date = st.date_input("🎂 تاريخ الميلاد", min_value=date(1900, 1, 1))
             password = st.text_input("🔒 كلمة المرور", type="password")
             confirm_password = st.text_input("✅ تأكيد كلمة المرور", type="password")
 
-            submitted = st.form_submit_button("إنشاء الحساب ✨")
+            submitted = st.form_submit_button("إنشاء الحساب")
             if submitted:
                 age = relativedelta(date.today(), birth_date).years
                 if age < 18:
-                    st.error("❌ يجب أن يكون عمرك 18 عاماً أو أكثر")
+                    st.error("يجب أن يكون عمرك 18 عاماً أو أكثر")
                 elif password != confirm_password:
-                    st.error("❌ كلمة المرور غير متطابقة")
+                    st.error("كلمة المرور غير متطابقة")
                 elif email in st.session_state.users_db:
-                    st.error("❌ هذا البريد الإلكتروني مسجل بالفعل")
+                    st.error("هذا البريد الإلكتروني مسجل بالفعل")
                 else:
                     st.session_state.users_db[email] = {
                         'name': name,
                         'password': hashlib.sha256(password.encode()).hexdigest(),
                         'birth_date': birth_date
                     }
-                    st.success("✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
+                    st.success("تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
                     time.sleep(2)
                     st.session_state.current_page = "login"
                     st.rerun()
 
+        st.markdown("---")
+        st.markdown("أو")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("تسجيل الدخول عبر Google", use_container_width=True):
+                st.info("هذه الميزة قيد التطوير")
+        with col2:
+            if st.button("تسجيل الدخول عبر Microsoft", use_container_width=True):
+                st.info("هذه الميزة قيد التطوير")
+        st.markdown("---")
+        if st.button("لديك حساب بالفعل؟ تسجيل الدخول"):
+            st.session_state.current_page = "login"
+            st.rerun()
+
     def login_page():
         st.markdown(f"""
             <div style='text-align:center; margin-bottom: 20px;'>
-                <img src="{LOGIN_LOGO}" width="300">
-                <h2 style='color:#4B4B4B;'>تسجيل الدخول</h2>
+                <img src="{LOGIN_LOGO}" width="200">
+                <h1 style='color:#333;'>LEO.AI</h1>
             </div>
             """, unsafe_allow_html=True)
 
-        with st.form("تسجيل الدخول"):
-            email = st.text_input("📧 البريد الإلكتروني")
-            password = st.text_input("🔒 كلمة المرور", type="password")
+        with st.form("تسجيل الدخول", clear_on_submit=True):
+            email = st.text_input("البريد الإلكتروني")
+            password = st.text_input("كلمة المرور", type="password")
 
-            submitted = st.form_submit_button("تسجيل الدخول ✅")
+            submitted = st.form_submit_button("تسجيل الدخول")
             if submitted:
                 if email in st.session_state.users_db and \
                         hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
@@ -87,17 +172,37 @@ def app():
                         'email': email,
                         'name': st.session_state.users_db[email]['name']
                     }
-                    st.success("✅ تم تسجيل الدخول بنجاح!")
+                    st.success("تم تسجيل الدخول بنجاح!")
                     time.sleep(1)
                     st.rerun()
                 else:
-                    st.error("❌ بيانات الدخول غير صحيحة")
+                    st.error("بيانات الدخول غير صحيحة")
+
+        st.markdown("---")
+        st.markdown("أو")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("تسجيل الدخول عبر Google", use_container_width=True):
+                st.info("هذه الميزة قيد التطوير")
+        with col2:
+            if st.button("تسجيل الدخول عبر Microsoft", use_container_width=True):
+                st.info("هذه الميزة قيد التطوير")
+        st.markdown("---")
+        if st.button("ليس لديك حساب؟ إنشاء حساب جديد"):
+            st.session_state.current_page = "create_account"
+            st.rerun()
 
     def info_page():
-        st.title("معلومات عن التطبيق")
+        st.markdown(f"""
+            <div style='text-align:center; margin-bottom: 20px;'>
+                <img src="{LOGIN_LOGO}" width="200">
+                <h1 style='color:#333;'>LEO.AI</h1>
+            </div>
+            """, unsafe_allow_html=True)
+            
         st.markdown("""
         <div style="background-color:#f0f2f6;padding:20px;border-radius:10px">
-            <h3>LEO Chat</h3>
+            <h3>معلومات عن التطبيق</h3>
             <p>تم تطوير هذا التطبيق بواسطة <strong>إسلام خليفة</strong></p>
             <p>الجنسية: مصري</p>
             <p>للتواصل: 01028799352</p>
@@ -110,51 +215,46 @@ def app():
 
     if 'logged_in' in st.session_state and st.session_state.logged_in:
         with st.sidebar:
-            st.image(LOGO_URL, width=200)
+            st.image(LOGO_URL, width=150)
             st.markdown(f"### مرحباً، {st.session_state.current_user['name']}")
             st.markdown(f"**البريد:** {st.session_state.current_user['email']}")
 
-            if st.button("🚪 تسجيل الخروج", type="primary", help="انقر لتسجيل الخروج"):
+            if st.button("تسجيل الخروج", use_container_width=True):
                 st.session_state.logged_in = False
                 st.rerun()
 
             st.markdown("---")
-
-            if st.button("🔄 بدء محادثة جديدة"):
+            st.markdown("**المحادثات**")
+            
+            if st.button("بدء محادثة جديدة", use_container_width=True):
                 st.session_state.messages = []
                 st.rerun()
 
             st.markdown("---")
-            st.subheader("آخر المحادثات")
+            st.markdown("**آخر المحادثات**")
 
             if "messages" not in st.session_state:
                 st.session_state.messages = []
 
             if not st.session_state.messages:
-                st.caption("لا توجد محادثات سابقة")
+                st.markdown("لا توجد محادثات سابقة")
             else:
                 for i, msg in enumerate(reversed(st.session_state.messages[-5:])):
                     if msg["role"] == "user":
                         with st.container(border=True):
-                            st.caption(f"المحادثة {len(st.session_state.messages[-5:]) - i}")
-                            st.markdown(f"**{msg['content'][:30]}...**")
+                            st.markdown(f"**المحادثة {len(st.session_state.messages[-5:]) - i}**")
+                            st.markdown(f"{msg['content'][:30]}...")
 
             st.markdown("---")
-            if st.button("ℹ️ معلومات عن التطبيق"):
+            if st.button("معلومات عن التطبيق", use_container_width=True):
                 st.session_state.show_info = True
                 st.rerun()
 
     if 'logged_in' not in st.session_state or not st.session_state.logged_in:
         if st.session_state.current_page == "login":
             login_page()
-            if st.button("إنشاء حساب جديد"):
-                st.session_state.current_page = "create_account"
-                st.rerun()
         elif st.session_state.current_page == "create_account":
             create_account()
-            if st.button("العودة لتسجيل الدخول"):
-                st.session_state.current_page = "login"
-                st.rerun()
     else:
         if 'show_info' in st.session_state and st.session_state.show_info:
             info_page()
@@ -162,11 +262,12 @@ def app():
                 st.session_state.show_info = False
                 st.rerun()
         else:
-            col1, col2 = st.columns([0.1, 0.9])
-            with col1:
-                st.image(LOGO_URL, width=80)
-            with col2:
-                st.title("LEO Chat")
+            st.markdown(f"""
+                <div style='text-align:center; margin-bottom: 20px;'>
+                    <img src="{LOGO_URL}" width="100">
+                    <h1 style='color:#333;'>LEOAI</h1>
+                </div>
+                """, unsafe_allow_html=True)
 
             if "logged_in" in st.session_state and st.session_state.logged_in:
                 uploaded_file = st.file_uploader(
@@ -212,7 +313,7 @@ def app():
                             st.error(f"حدث خطأ: {str(e)}")
 
             st.markdown("---")
-            st.caption("""
+            st.markdown("""
             <div style="text-align: center; font-size: 14px;">
                 تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
             </div>

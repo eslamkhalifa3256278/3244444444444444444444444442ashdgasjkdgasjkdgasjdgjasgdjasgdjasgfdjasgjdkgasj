@@ -166,7 +166,7 @@ def app():
         else:
             st.markdown(f"""
             <div style='background-color:{bg_color}; color:{text_color}; padding: 15px; border-radius: 10px;'>
-                <h2 style='margin:0;'>LEO Chat 🤖</h2>
+                <h2 style='margin:0;'>مرحباً ليو في خدمتك </h2>
             </div>
             """, unsafe_allow_html=True)
 

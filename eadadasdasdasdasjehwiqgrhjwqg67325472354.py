@@ -1,235 +1,223 @@
-import sys
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                            QLabel, QLineEdit, QPushButton, QListWidget, QTextEdit, QFrame)
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont, QPixmap
+import streamlit as st
+import google.generativeai as genai
+from datetime import datetime, date
+import hashlib
+import time
+from dateutil.relativedelta import relativedelta
 
-class LoginWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setup_ui()
+# إعدادات التطبيق
+LOGO_URL = "https://www2.0zz0.com/2025/05/01/22/992228290.png"
+LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
 
-    def setup_ui(self):
-        self.setWindowTitle("LEO.AI")
-        self.setFixedSize(400, 600)
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #f5f5f5;
-                font-family: Arial;
-            }
-            QLabel#title {
-                font-size: 24px;
-                font-weight: bold;
-                color: #333;
-                margin-bottom: 30px;
-            }
-            QLineEdit {
-                padding: 12px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-                font-size: 16px;
-                margin-bottom: 15px;
-            }
-            QPushButton {
-                background-color: #4285F4;
-                color: white;
-                border: none;
-                padding: 12px;
-                border-radius: 8px;
-                font-size: 16px;
-                font-weight: bold;
-                margin: 5px 0;
-            }
-            QPushButton:hover {
-                background-color: #3367D6;
-            }
-            QLabel#divider {
-                text-align: center;
-                color: #777;
-                margin: 15px 0;
-            }
-        """)
+# تهيئة النموذج باستخدام مفتاح API من الـ secrets
+genai.configure(api_key=st.secrets["API_KEY"])
+model = genai.GenerativeModel('gemini-2.0-flash')
 
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignCenter)
-        layout.setContentsMargins(40, 40, 40, 40)
+# قاعدة بيانات المستخدمين (مؤقتة)
+if 'users_db' not in st.session_state:
+    st.session_state.users_db = {}
 
-        # العنوان
-        title = QLabel("# LEO.AI")
-        title.setObjectName("title")
-        title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title)
+# إعداد واجهة المستخدم
+def app():
+    st.set_page_config(
+        page_title="LEO Chat",
+        page_icon=LOGIN_LOGO,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
 
-        # حقل البريد الإلكتروني
-        self.email_input = QLineEdit()
-        self.email_input.setPlaceholderText("البريد الالكتروني")
-        layout.addWidget(self.email_input)
+    if "uploaded_files" not in st.session_state:
+        st.session_state.uploaded_files = 0
+        st.session_state.max_files_per_day = 2
+        st.session_state.last_upload_date = None
 
-        # حقل كلمة المرور
-        self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("كلمة المرور")
-        self.password_input.setEchoMode(QLineEdit.Password)
-        layout.addWidget(self.password_input)
+    def create_account():
+        st.markdown(f"""
+            <div style='text-align:center; margin-bottom: 20px;'>
+                <img src="{LOGIN_LOGO}" width="300">
+                <h2 style='color:#4B4B4B;'>إنشاء حساب جديد</h2>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # زر تسجيل الدخول
-        login_btn = QPushButton("تسجيل الدخول")
-        layout.addWidget(login_btn)
+        with st.form("إنشاء حساب جديد"):
+            name = st.text_input("👤 الاسم الكامل")
+            email = st.text_input("📧 البريد الإلكتروني")
+            birth_date = st.date_input("🎂 تاريخ الميلاد", min_value=date(1900, 1, 1))
+            password = st.text_input("🔒 كلمة المرور", type="password")
+            confirm_password = st.text_input("✅ تأكيد كلمة المرور", type="password")
 
-        # فاصل
-        divider = QLabel("أو")
-        divider.setObjectName("divider")
-        divider.setAlignment(Qt.AlignCenter)
-        layout.addWidget(divider)
+            submitted = st.form_submit_button("إنشاء الحساب ✨")
+            if submitted:
+                age = relativedelta(date.today(), birth_date).years
+                if age < 18:
+                    st.error("❌ يجب أن يكون عمرك 18 عاماً أو أكثر")
+                elif password != confirm_password:
+                    st.error("❌ كلمة المرور غير متطابقة")
+                elif email in st.session_state.users_db:
+                    st.error("❌ هذا البريد الإلكتروني مسجل بالفعل")
+                else:
+                    st.session_state.users_db[email] = {
+                        'name': name,
+                        'password': hashlib.sha256(password.encode()).hexdigest(),
+                        'birth_date': birth_date
+                    }
+                    st.success("✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
+                    time.sleep(2)
+                    st.session_state.current_page = "login"
+                    st.rerun()
 
-        # أزرار تسجيل الدخول الخارجية
-        btn_layout = QHBoxLayout()
-        google_btn = QPushButton("Google")
-        microsoft_btn = QPushButton("Microsoft")
-        btn_layout.addWidget(google_btn)
-        btn_layout.addWidget(microsoft_btn)
-        layout.addLayout(btn_layout)
+    def login_page():
+        st.markdown(f"""
+            <div style='text-align:center; margin-bottom: 20px;'>
+                <img src="{LOGIN_LOGO}" width="300">
+                <h2 style='color:#4B4B4B;'>تسجيل الدخول</h2>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # فاصل
-        divider2 = QLabel("أو")
-        divider2.setObjectName("divider")
-        divider2.setAlignment(Qt.AlignCenter)
-        layout.addWidget(divider2)
+        with st.form("تسجيل الدخول"):
+            email = st.text_input("📧 البريد الإلكتروني")
+            password = st.text_input("🔒 كلمة المرور", type="password")
 
-        # زر إنشاء حساب
-        create_account_btn = QPushButton("قم بإنشاء حساب جديد")
-        layout.addWidget(create_account_btn)
+            submitted = st.form_submit_button("تسجيل الدخول ✅")
+            if submitted:
+                if email in st.session_state.users_db and \
+                        hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
+                    st.session_state.logged_in = True
+                    st.session_state.current_user = {
+                        'email': email,
+                        'name': st.session_state.users_db[email]['name']
+                    }
+                    st.success("✅ تم تسجيل الدخول بنجاح!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ بيانات الدخول غير صحيحة")
 
-        self.setLayout(layout)
+    def info_page():
+        st.title("معلومات عن التطبيق")
+        st.markdown("""
+        <div style="background-color:#f0f2f6;padding:20px;border-radius:10px">
+            <h3>LEO Chat</h3>
+            <p>تم تطوير هذا التطبيق بواسطة <strong>إسلام خليفة</strong></p>
+            <p>الجنسية: مصري</p>
+            <p>للتواصل: 01028799352</p>
+            <p>الإصدار: 1.0</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-class ChatWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setup_ui()
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "login"
 
-    def setup_ui(self):
-        self.setWindowTitle("LEOAI")
-        self.setFixedSize(1000, 700)
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #f5f5f5;
-                font-family: Arial;
-            }
-            QLabel#title {
-                font-size: 24px;
-                font-weight: bold;
-                color: #333;
-                margin-bottom: 20px;
-            }
-            QListWidget {
-                background-color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px;
-                font-size: 16px;
-            }
-            QListWidget::item {
-                padding: 10px;
-                border-bottom: 1px solid #eee;
-            }
-            QListWidget::item:selected {
-                background-color: #e0e0e0;
-            }
-            QTextEdit {
-                background-color: white;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-                padding: 15px;
-                font-size: 16px;
-            }
-            QPushButton {
-                background-color: #4285F4;
-                color: white;
-                border: none;
-                padding: 12px;
-                border-radius: 8px;
-                font-size: 16px;
-                font-weight: bold;
-                margin: 5px 0;
-            }
-            QPushButton:hover {
-                background-color: #3367D6;
-            }
-            QFrame#sidebar {
-                background-color: white;
-                border-right: 1px solid #ddd;
-            }
-            QFrame#chat_area {
-                background-color: #f5f5f5;
-            }
-        """)
+    if 'logged_in' in st.session_state and st.session_state.logged_in:
+        with st.sidebar:
+            st.image(LOGO_URL, width=200)
+            st.markdown(f"### مرحباً، {st.session_state.current_user['name']}")
+            st.markdown(f"**البريد:** {st.session_state.current_user['email']}")
 
-        main_widget = QWidget()
-        main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+            if st.button("🚪 تسجيل الخروج", type="primary", help="انقر لتسجيل الخروج"):
+                st.session_state.logged_in = False
+                st.rerun()
 
-        # الشريط الجانبي
-        sidebar = QFrame()
-        sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(300)
-        sidebar_layout = QVBoxLayout()
-        sidebar_layout.setAlignment(Qt.AlignTop)
-        sidebar_layout.setContentsMargins(20, 20, 20, 20)
+            st.markdown("---")
 
-        sidebar_title = QLabel("# LEOAI")
-        sidebar_title.setObjectName("title")
-        sidebar_title.setAlignment(Qt.AlignRight)
-        sidebar_layout.addWidget(sidebar_title)
+            if st.button("🔄 بدء محادثة جديدة"):
+                st.session_state.messages = []
+                st.rerun()
 
-        new_chat_btn = QPushButton("محادثة جديدة")
-        sidebar_layout.addWidget(new_chat_btn)
+            st.markdown("---")
+            st.subheader("آخر المحادثات")
 
-        sidebar_layout.addSpacing(20)
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
 
-        old_chats_label = QLabel("المحادثات القديمة")
-        old_chats_label.setAlignment(Qt.AlignRight)
-        sidebar_layout.addWidget(old_chats_label)
+            if not st.session_state.messages:
+                st.caption("لا توجد محادثات سابقة")
+            else:
+                for i, msg in enumerate(reversed(st.session_state.messages[-5:])):
+                    if msg["role"] == "user":
+                        with st.container(border=True):
+                            st.caption(f"المحادثة {len(st.session_state.messages[-5:]) - i}")
+                            st.markdown(f"**{msg['content'][:30]}...**")
 
-        self.chats_list = QListWidget()
-        self.chats_list.addItems(["محادثة واحد", "محادثة اثنين", "محادثة ثلاثة"])
-        sidebar_layout.addWidget(self.chats_list)
+            st.markdown("---")
+            if st.button("ℹ️ معلومات عن التطبيق"):
+                st.session_state.show_info = True
+                st.rerun()
 
-        sidebar.setLayout(sidebar_layout)
-        main_layout.addWidget(sidebar)
+    if 'logged_in' not in st.session_state or not st.session_state.logged_in:
+        if st.session_state.current_page == "login":
+            login_page()
+            if st.button("إنشاء حساب جديد"):
+                st.session_state.current_page = "create_account"
+                st.rerun()
+        elif st.session_state.current_page == "create_account":
+            create_account()
+            if st.button("العودة لتسجيل الدخول"):
+                st.session_state.current_page = "login"
+                st.rerun()
+    else:
+        if 'show_info' in st.session_state and st.session_state.show_info:
+            info_page()
+            if st.button("العودة للرئيسية"):
+                st.session_state.show_info = False
+                st.rerun()
+        else:
+            col1, col2 = st.columns([0.1, 0.9])
+            with col1:
+                st.image(LOGO_URL, width=80)
+            with col2:
+                st.title("LEO Chat")
 
-        # منطقة المحادثة
-        chat_area = QFrame()
-        chat_area.setObjectName("chat_area")
-        chat_layout = QVBoxLayout()
-        chat_layout.setContentsMargins(20, 20, 20, 20)
+            if "logged_in" in st.session_state and st.session_state.logged_in:
+                uploaded_file = st.file_uploader(
+                    "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
+                    type=["pdf", "txt", "docx"],
+                    accept_multiple_files=False,
+                    key="file_uploader"
+                )
 
-        self.chat_display = QTextEdit()
-        self.chat_display.setReadOnly(True)
-        self.chat_display.setPlaceholderText("مرحبًا بك...")
-        chat_layout.addWidget(self.chat_display)
+                if uploaded_file:
+                    current_date = datetime.now().date()
+                    if st.session_state.last_upload_date != current_date:
+                        st.session_state.uploaded_files = 0
+                        st.session_state.last_upload_date = current_date
 
-        self.message_input = QTextEdit()
-        self.message_input.setMaximumHeight(100)
-        self.message_input.setPlaceholderText("اكتب رسالتك هنا...")
-        chat_layout.addWidget(self.message_input)
+                    if st.session_state.uploaded_files < st.session_state.max_files_per_day:
+                        st.session_state.uploaded_files += 1
+                        st.success(
+                            f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
+                    else:
+                        st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
 
-        send_btn = QPushButton("إرسال")
-        chat_layout.addWidget(send_btn)
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
 
-        chat_area.setLayout(chat_layout)
-        main_layout.addWidget(chat_area)
+            for message in st.session_state.messages:
+                avatar = LOGIN_LOGO if message["role"] == "assistant" else "👤"
+                with st.chat_message(message["role"], avatar=avatar):
+                    st.markdown(message["content"])
 
-        main_widget.setLayout(main_layout)
-        self.setCentralWidget(main_widget)
+            if prompt := st.chat_input("اكتب رسالتك هنا..."):
+                if "logged_in" not in st.session_state or not st.session_state.logged_in:
+                    st.warning("الرجاء تسجيل الدخول لإرسال الرسائل")
+                else:
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    with st.spinner("جارٍ إعداد الرد..."):
+                        try:
+                            response = model.generate_content(prompt)
+                            reply = response.text
+                            st.session_state.messages.append({"role": "assistant", "content": reply})
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"حدث خطأ: {str(e)}")
+
+            st.markdown("---")
+            st.caption("""
+            <div style="text-align: center; font-size: 14px;">
+                تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
+            </div>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    app()
     
-    # لتطبيق RTL
-    app.setLayoutDirection(Qt.RightToLeft)
-    
-    # اختر أي نافذة تريد عرضها للتجربة
-    window = LoginWindow()  # أو ChatWindow() لرؤية واجهة المحادثة
-    window.show()
-    
-    sys.exit(app.exec_())

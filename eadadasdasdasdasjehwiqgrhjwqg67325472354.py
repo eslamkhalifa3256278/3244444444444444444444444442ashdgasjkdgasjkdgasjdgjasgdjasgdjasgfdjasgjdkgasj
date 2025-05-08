@@ -1,26 +1,21 @@
-mport streamlit as st
+import streamlit as st
 import google.generativeai as genai
 from datetime import datetime, date
 import hashlib
 import time
 from dateutil.relativedelta import relativedelta
-import firebase_admin
-from firebase_admin import credentials, firestore, auth
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/05/01/22/992228290.png"
 LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
 
-# تهيئة Firebase (يجب تنزيل ملف serviceAccountKey.json من كونسول Firebase)
-if not firebase_admin._apps:
-    cred = credentials.Certificate("serviceAccountKey.json")
-    firebase_admin.initialize_app(cred)
-
-db = firestore.client()
-
 # تهيئة النموذج باستخدام مفتاح API من الـ secrets
 genai.configure(api_key=st.secrets["API_KEY"])
 model = genai.GenerativeModel('gemini-2.0-flash')
+
+# قاعدة بيانات المستخدمين (مؤقتة)
+if 'users_db' not in st.session_state:
+    st.session_state.users_db = {}
 
 # إعداد واجهة المستخدم
 def app():
@@ -58,34 +53,18 @@ def app():
                     st.error("❌ يجب أن يكون عمرك 18 عاماً أو أكثر")
                 elif password != confirm_password:
                     st.error("❌ كلمة المرور غير متطابقة")
+                elif email in st.session_state.users_db:
+                    st.error("❌ هذا البريد الإلكتروني مسجل بالفعل")
                 else:
-                    try:
-                        # إنشاء مستخدم في Firebase Authentication
-                        user = auth.create_user(
-                            email=email,
-                            password=password,
-                            display_name=name
-                        )
-                        
-                        # حفظ بيانات المستخدم في Firestore
-                        user_data = {
-                            'name': name,
-                            'email': email,
-                            'birth_date': birth_date.strftime("%Y-%m-%d"),
-                            'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }
-                        
-                        db.collection('users').document(user.uid).set(user_data)
-                        
-                        st.success("✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
-                        time.sleep(2)
-                        st.session_state.current_page = "login"
-                        st.rerun()
-                        
-                    except auth.EmailAlreadyExistsError:
-                        st.error("❌ هذا البريد الإلكتروني مسجل بالفعل")
-                    except Exception as e:
-                        st.error(f"❌ حدث خطأ: {str(e)}")
+                    st.session_state.users_db[email] = {
+                        'name': name,
+                        'password': hashlib.sha256(password.encode()).hexdigest(),
+                        'birth_date': birth_date
+                    }
+                    st.success("✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
+                    time.sleep(2)
+                    st.session_state.current_page = "login"
+                    st.rerun()
 
     def login_page():
         st.markdown(f"""
@@ -101,28 +80,18 @@ def app():
 
             submitted = st.form_submit_button("تسجيل الدخول ✅")
             if submitted:
-                try:
-                    # تسجيل الدخول باستخدام Firebase Authentication
-                    user = auth.get_user_by_email(email)
-                    
-                    # هنا يمكنك استخدام Firebase Auth SDK لتسجيل الدخول الفعلي
-                    # لكن في Streamlit سنستخدم جلسة مؤقتة للتبسيط
-                    
+                if email in st.session_state.users_db and \
+                        hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
                     st.session_state.logged_in = True
                     st.session_state.current_user = {
-                        'uid': user.uid,
                         'email': email,
-                        'name': user.display_name
+                        'name': st.session_state.users_db[email]['name']
                     }
-                    
                     st.success("✅ تم تسجيل الدخول بنجاح!")
                     time.sleep(1)
                     st.rerun()
-                    
-                except auth.UserNotFoundError:
-                    st.error("❌ المستخدم غير موجود")
-                except Exception as e:
-                    st.error(f"❌ حدث خطأ: {str(e)}")
+                else:
+                    st.error("❌ بيانات الدخول غير صحيحة")
 
     def info_page():
         st.title("معلومات عن التطبيق")
@@ -217,15 +186,6 @@ def app():
                         st.session_state.uploaded_files += 1
                         st.success(
                             f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
-                        
-                        # حفظ معلومات الملف في Firestore
-                        file_data = {
-                            'user_id': st.session_state.current_user['uid'],
-                            'file_name': uploaded_file.name,
-                            'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            'size': uploaded_file.size
-                        }
-                        db.collection('uploads').add(file_data)
                     else:
                         st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
 
@@ -242,31 +202,11 @@ def app():
                     st.warning("الرجاء تسجيل الدخول لإرسال الرسائل")
                 else:
                     st.session_state.messages.append({"role": "user", "content": prompt})
-                    
-                    # حفظ المحادثة في Firestore
-                    chat_data = {
-                        'user_id': st.session_state.current_user['uid'],
-                        'message': prompt,
-                        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        'role': 'user'
-                    }
-                    db.collection('chats').add(chat_data)
-                    
                     with st.spinner("جارٍ إعداد الرد..."):
                         try:
                             response = model.generate_content(prompt)
                             reply = response.text
                             st.session_state.messages.append({"role": "assistant", "content": reply})
-                            
-                            # حفظ رد المساعد في Firestore
-                            reply_data = {
-                                'user_id': st.session_state.current_user['uid'],
-                                'message': reply,
-                                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                'role': 'assistant'
-                            }
-                            db.collection('chats').add(reply_data)
-                            
                             st.rerun()
                         except Exception as e:
                             st.error(f"حدث خطأ: {str(e)}")
@@ -279,4 +219,4 @@ def app():
             """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    app() 
+    app()

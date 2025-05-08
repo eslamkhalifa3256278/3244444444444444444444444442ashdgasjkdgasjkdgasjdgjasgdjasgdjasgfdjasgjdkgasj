@@ -1,5 +1,3 @@
-
 google-generativeai
 firebase-admin
 PyQt5
-pip install firebase-admin

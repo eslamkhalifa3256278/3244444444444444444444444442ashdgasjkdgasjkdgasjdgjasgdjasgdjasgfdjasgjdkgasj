@@ -4,23 +4,19 @@ from datetime import datetime, date
 import hashlib
 import time
 from dateutil.relativedelta import relativedelta
-import re  # Added for email validation
+import re
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/05/01/22/992228290.png"
 LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
 
-# تهيئة النموذج باستخدام مفتاح API من الـ secrets
+# تهيئة النموذج
 try:
     genai.configure(api_key=st.secrets["API_KEY"])
     model = genai.GenerativeModel('gemini-pro')
 except Exception as e:
-    st.error(f"فشل في تهيئة نموذج الذكاء الاصطناعي: {str(e)}")
+    st.error(f"خطأ في تهيئة النموذج: {str(e)}")
     st.stop()
-
-# قاعدة بيانات المستخدمين (مؤقتة)
-if 'users_db' not in st.session_state:
-    st.session_state.users_db = {}
 
 # وظيفة للتحقق من صحة البريد الإلكتروني
 def is_valid_email(email):
@@ -28,7 +24,7 @@ def is_valid_email(email):
     return re.match(pattern, email) is not None
 
 # إعداد واجهة المستخدم
-def app():
+def main():
     st.set_page_config(
         page_title="LEO Chat",
         page_icon=LOGIN_LOGO,
@@ -36,15 +32,19 @@ def app():
         initial_sidebar_state="expanded"
     )
 
-    # Initialize session state variables
-    if "uploaded_files" not in st.session_state:
-        st.session_state.uploaded_files = 0
-        st.session_state.max_files_per_day = 2
-        st.session_state.last_upload_date = None
+    # تهيئة حالة الجلسة
+    if 'users_db' not in st.session_state:
+        st.session_state.users_db = {}
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "login"
     if 'show_info' not in st.session_state:
         st.session_state.show_info = False
+    if 'uploaded_files' not in st.session_state:
+        st.session_state.uploaded_files = 0
+        st.session_state.max_files_per_day = 2
+        st.session_state.last_upload_date = None
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
 
     def create_account():
         st.markdown(f"""
@@ -54,7 +54,7 @@ def app():
             </div>
             """, unsafe_allow_html=True)
 
-        with st.form("إنشاء حساب جديد"):
+        with st.form("create_account_form"):
             name = st.text_input("👤 الاسم الكامل", max_chars=50)
             email = st.text_input("📧 البريد الإلكتروني", max_chars=100)
             birth_date = st.date_input("🎂 تاريخ الميلاد", min_value=date(1900, 1, 1), max_value=date.today())
@@ -84,9 +84,9 @@ def app():
                             'birth_date': birth_date
                         }
                         st.success("✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
-                        time.sleep(2)
+                        time.sleep(1.5)
                         st.session_state.current_page = "login"
-                        st.rerun()
+                        st.experimental_rerun()
 
     def login_page():
         st.markdown(f"""
@@ -96,7 +96,7 @@ def app():
             </div>
             """, unsafe_allow_html=True)
 
-        with st.form("تسجيل الدخول"):
+        with st.form("login_form"):
             email = st.text_input("📧 البريد الإلكتروني")
             password = st.text_input("🔒 كلمة المرور", type="password")
 
@@ -111,10 +111,10 @@ def app():
                         'email': email,
                         'name': st.session_state.users_db[email]['name']
                     }
-                    st.session_state.messages = []  # Reset chat history on new login
+                    st.session_state.messages = []
                     st.success("✅ تم تسجيل الدخول بنجاح!")
                     time.sleep(1)
-                    st.rerun()
+                    st.experimental_rerun()
                 else:
                     st.error("❌ بيانات الدخول غير صحيحة")
 
@@ -130,51 +130,51 @@ def app():
         </div>
         """, unsafe_allow_html=True)
 
-    # Main page routing
+    # الصفحات الرئيسية
     if 'logged_in' in st.session_state and st.session_state.logged_in:
+        # الشريط الجانبي
         with st.sidebar:
             st.image(LOGO_URL, width=200)
             st.markdown(f"### مرحباً، {st.session_state.current_user['name']}")
             st.markdown(f"**البريد:** {st.session_state.current_user['email']}")
 
-            if st.button("🚪 تسجيل الخروج", type="primary", help="انقر لتسجيل الخروج"):
+            if st.button("🚪 تسجيل الخروج", type="primary", key="logout_btn"):
+                keys_to_keep = ['users_db', 'current_page']
                 for key in list(st.session_state.keys()):
-                    if key not in ['users_db', 'current_page']:
+                    if key not in keys_to_keep:
                         del st.session_state[key]
                 st.session_state.logged_in = False
                 st.session_state.current_page = "login"
-                st.rerun()
+                st.experimental_rerun()
 
             st.markdown("---")
-            if st.button("🔄 بدء محادثة جديدة"):
+            if st.button("🔄 بدء محادثة جديدة", key="new_chat_btn"):
                 st.session_state.messages = []
-                st.rerun()
+                st.experimental_rerun()
 
             st.markdown("---")
             st.subheader("آخر المحادثات")
-
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
 
             if not st.session_state.messages:
                 st.caption("لا توجد محادثات سابقة")
             else:
                 for i, msg in enumerate(reversed(st.session_state.messages[-5:])):
                     if msg["role"] == "user":
-                        with st.container(border=True):
+                        with st.container():
                             st.caption(f"المحادثة {len(st.session_state.messages[-5:]) - i}")
                             st.markdown(f"**{msg['content'][:30]}...**")
 
             st.markdown("---")
-            if st.button("ℹ️ معلومات عن التطبيق"):
+            if st.button("ℹ️ معلومات عن التطبيق", key="info_btn"):
                 st.session_state.show_info = True
-                st.rerun()
+                st.experimental_rerun()
 
+        # المحتوى الرئيسي
         if st.session_state.show_info:
             info_page()
-            if st.button("العودة للرئيسية"):
+            if st.button("العودة للرئيسية", key="back_btn"):
                 st.session_state.show_info = False
-                st.rerun()
+                st.experimental_rerun()
         else:
             col1, col2 = st.columns([0.1, 0.9])
             with col1:
@@ -182,6 +182,7 @@ def app():
             with col2:
                 st.title("LEO Chat")
 
+            # رفع الملفات
             uploaded_file = st.file_uploader(
                 "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
                 type=["pdf", "txt", "docx"],
@@ -202,14 +203,12 @@ def app():
                 else:
                     st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
 
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-
+            # عرض محادثات الدردشة
             for message in st.session_state.messages:
-                avatar = LOGIN_LOGO if message["role"] == "assistant" else "👤"
-                with st.chat_message(message["role"], avatar=avatar):
+                with st.chat_message(message["role"], avatar=LOGIN_LOGO if message["role"] == "assistant" else "👤"):
                     st.markdown(message["content"])
 
+            # إدخال الرسائل
             if prompt := st.chat_input("اكتب رسالتك هنا..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 with st.spinner("جارٍ إعداد الرد..."):
@@ -219,7 +218,7 @@ def app():
                             st.session_state.messages.append({"role": "assistant", "content": response.text})
                         else:
                             st.error("لم يتم الحصول على رد من النموذج")
-                        st.rerun()
+                        st.experimental_rerun()
                     except Exception as e:
                         st.error(f"حدث خطأ: {str(e)}")
 
@@ -230,16 +229,17 @@ def app():
             </div>
             """, unsafe_allow_html=True)
     else:
+        # صفحات تسجيل الدخول وإنشاء الحساب
         if st.session_state.current_page == "login":
             login_page()
-            if st.button("إنشاء حساب جديد"):
+            if st.button("إنشاء حساب جديد", key="create_account_btn"):
                 st.session_state.current_page = "create_account"
-                st.rerun()
+                st.experimental_rerun()
         elif st.session_state.current_page == "create_account":
             create_account()
-            if st.button("العودة لتسجيل الدخول"):
+            if st.button("العودة لتسجيل الدخول", key="back_to_login_btn"):
                 st.session_state.current_page = "login"
-                st.rerun()
+                st.experimental_rerun()
 
 if __name__ == "__main__":
-    app()
+    main()

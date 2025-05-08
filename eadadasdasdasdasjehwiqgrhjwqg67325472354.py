@@ -1,4 +1,4 @@
-import streamlit as st
+mport streamlit as st
 import google.generativeai as genai
 from datetime import datetime, date
 import hashlib
@@ -279,4 +279,4 @@ def app():
             """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    app()
+    app() 

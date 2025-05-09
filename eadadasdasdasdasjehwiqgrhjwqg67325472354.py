@@ -4,15 +4,16 @@ from datetime import datetime, date
 import hashlib
 import time
 from dateutil.relativedelta import relativedelta
-import base64
-import json
-import random
+import pyttsx3
+import speech_recognition as sr
+import numpy as np
+import pygame
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/05/01/22/992228290.png"
 LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
 
-# تهيئة النموذج باستخدام مفتاح API
+# تهيئة النموذج باستخدام مفتاح API من الـ secrets
 genai.configure(api_key=st.secrets["API_KEY"])
 model = genai.GenerativeModel('gemini-2.0-flash')
 
@@ -20,62 +21,42 @@ model = genai.GenerativeModel('gemini-2.0-flash')
 if 'users_db' not in st.session_state:
     st.session_state.users_db = {}
 
-# إعداد الوضع الليلي
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
+# تهيئة محرك TTS
+engine = pyttsx3.init()
 
-st.set_page_config(
-    page_title="LEO Chat",
-    page_icon=LOGIN_LOGO,
-    layout="wide"
-)
+# إعدادات موسيقى المساعدة
+pygame.mixer.init()
 
-# CSS للوضع الليلي
-if st.session_state.dark_mode:
-    st.markdown("""
-        <style>
-            body {
-                background-color: #1E1E1E;
-                color: white;
-            }
-            .stButton>button {
-                background-color: #444;
-                color: white;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+# إعدادات المحادثة
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+if 'chat_stats' not in st.session_state:
+    st.session_state.chat_stats = {'messages_sent': 0, 'avg_response_time': 0}
 
-# حفظ المحادثات في ملف JSON
-def save_conversation():
-    if 'messages' in st.session_state and st.session_state.messages:
-        filename = f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
-        with open(filename, 'rb') as f:
-            b64 = base64.b64encode(f.read()).decode()
-            href = f'<a href="data:file/json;base64,{b64}" download="{filename}">📥 تحميل المحادثة</a>'
-            st.markdown(href, unsafe_allow_html=True)
-
-# مؤثرات جميلة عند التسجيل
-def show_confetti():
-    st.balloons()
-    st.snow()
-
+# إعدادات واجهة المستخدم
 def app():
-    if "uploaded_files" not in st.session_state:
-        st.session_state.uploaded_files = 0
-        st.session_state.max_files_per_day = 2
-        st.session_state.last_upload_date = None
+    st.set_page_config(
+        page_title="LEO Chat",
+        page_icon=LOGIN_LOGO,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
 
     def create_account():
-        st.image(LOGIN_LOGO, width=300)
-        st.header("إنشاء حساب جديد")
+        st.markdown(f"""
+            <div style='text-align:center; margin-bottom: 20px;'>
+                <img src="{LOGIN_LOGO}" width="300">
+                <h2 style='color:#4B4B4B;'>إنشاء حساب جديد</h2>
+            </div>
+            """, unsafe_allow_html=True)
+
         with st.form("إنشاء حساب جديد"):
             name = st.text_input("👤 الاسم الكامل")
             email = st.text_input("📧 البريد الإلكتروني")
             birth_date = st.date_input("🎂 تاريخ الميلاد", min_value=date(1900, 1, 1))
             password = st.text_input("🔒 كلمة المرور", type="password")
             confirm_password = st.text_input("✅ تأكيد كلمة المرور", type="password")
+
             submitted = st.form_submit_button("إنشاء الحساب ✨")
             if submitted:
                 age = relativedelta(date.today(), birth_date).years
@@ -92,17 +73,22 @@ def app():
                         'birth_date': birth_date
                     }
                     st.success("✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
-                    show_confetti()
                     time.sleep(2)
                     st.session_state.current_page = "login"
                     st.rerun()
 
     def login_page():
-        st.image(LOGIN_LOGO, width=300)
-        st.header("تسجيل الدخول")
+        st.markdown(f"""
+            <div style='text-align:center; margin-bottom: 20px;'>
+                <img src="{LOGIN_LOGO}" width="300">
+                <h2 style='color:#4B4B4B;'>تسجيل الدخول</h2>
+            </div>
+            """, unsafe_allow_html=True)
+
         with st.form("تسجيل الدخول"):
             email = st.text_input("📧 البريد الإلكتروني")
             password = st.text_input("🔒 كلمة المرور", type="password")
+
             submitted = st.form_submit_button("تسجيل الدخول ✅")
             if submitted:
                 if email in st.session_state.users_db and \
@@ -113,7 +99,6 @@ def app():
                         'name': st.session_state.users_db[email]['name']
                     }
                     st.success("✅ تم تسجيل الدخول بنجاح!")
-                    show_confetti()
                     time.sleep(1)
                     st.rerun()
                 else:
@@ -122,13 +107,13 @@ def app():
     def info_page():
         st.title("معلومات عن التطبيق")
         st.markdown("""
-            <div style="background-color:#f0f2f6;padding:20px;border-radius:10px">
-                <h3>LEO Chat</h3>
-                <p>تم تطوير هذا التطبيق بواسطة <strong>إسلام خليفة</strong></p>
-                <p>الجنسية: مصري</p>
-                <p>للتواصل: 01028799352</p>
-                <p>الإصدار: 1.0</p>
-            </div>
+        <div style="background-color:#f0f2f6;padding:20px;border-radius:10px">
+            <h3>LEO Chat</h3>
+            <p>تم تطوير هذا التطبيق بواسطة <strong>إسلام خليفة</strong></p>
+            <p>الجنسية: مصري</p>
+            <p>للتواصل: 01028799352</p>
+            <p>الإصدار: 1.0</p>
+        </div>
         """, unsafe_allow_html=True)
 
     if 'current_page' not in st.session_state:
@@ -140,22 +125,23 @@ def app():
             st.markdown(f"### مرحباً، {st.session_state.current_user['name']}")
             st.markdown(f"**البريد:** {st.session_state.current_user['email']}")
 
-            if st.button("🚪 تسجيل الخروج"):
+            if st.button("🚪 تسجيل الخروج", type="primary", help="انقر لتسجيل الخروج"):
                 st.session_state.logged_in = False
                 st.rerun()
 
             st.markdown("---")
+
             if st.button("🔄 بدء محادثة جديدة"):
                 st.session_state.messages = []
                 st.rerun()
 
             st.markdown("---")
-            if st.button("💾 حفظ المحادثة"):
-                save_conversation()
+            st.subheader("إحصائيات المحادثة")
+            st.markdown(f"**عدد الرسائل المرسلة:** {st.session_state.chat_stats['messages_sent']}")
+            st.markdown(f"**متوسط وقت الرد:** {st.session_state.chat_stats['avg_response_time']} ثانية")
 
-            if st.button("🌗 تبديل الوضع الليلي"):
-                st.session_state.dark_mode = not st.session_state.dark_mode
-                st.rerun()
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
 
             st.markdown("---")
             if st.button("ℹ️ معلومات عن التطبيق"):
@@ -186,27 +172,26 @@ def app():
             with col2:
                 st.title("LEO Chat")
 
-            uploaded_file = st.file_uploader(
-                "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
-                type=["pdf", "txt", "docx"],
-                accept_multiple_files=False,
-                key="file_uploader"
-            )
+            if "logged_in" in st.session_state and st.session_state.logged_in:
+                uploaded_file = st.file_uploader(
+                    "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
+                    type=["pdf", "txt", "docx"],
+                    accept_multiple_files=False,
+                    key="file_uploader"
+                )
 
-            if uploaded_file:
-                current_date = datetime.now().date()
-                if st.session_state.last_upload_date != current_date:
-                    st.session_state.uploaded_files = 0
-                    st.session_state.last_upload_date = current_date
+                if uploaded_file:
+                    current_date = datetime.now().date()
+                    if st.session_state.last_upload_date != current_date:
+                        st.session_state.uploaded_files = 0
+                        st.session_state.last_upload_date = current_date
 
-                if st.session_state.uploaded_files < st.session_state.max_files_per_day:
-                    st.session_state.uploaded_files += 1
-                    st.success(f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
-                else:
-                    st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
-
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
+                    if st.session_state.uploaded_files < st.session_state.max_files_per_day:
+                        st.session_state.uploaded_files += 1
+                        st.success(
+                            f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
+                    else:
+                        st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
 
             for message in st.session_state.messages:
                 avatar = LOGIN_LOGO if message["role"] == "assistant" else "👤"
@@ -218,21 +203,21 @@ def app():
                     st.warning("الرجاء تسجيل الدخول لإرسال الرسائل")
                 else:
                     st.session_state.messages.append({"role": "user", "content": prompt})
-                    with st.spinner("🤖 بيكتبلك الرد..."):
+                    with st.spinner("جارٍ إعداد الرد..."):
                         try:
                             response = model.generate_content(prompt)
                             reply = response.text
-                            time.sleep(random.uniform(1, 2))  # أنيمشن بسيط بالانتظار
                             st.session_state.messages.append({"role": "assistant", "content": reply})
+                            st.session_state.chat_stats['messages_sent'] += 1
                             st.rerun()
                         except Exception as e:
                             st.error(f"حدث خطأ: {str(e)}")
 
             st.markdown("---")
             st.caption("""
-                <div style="text-align: center; font-size: 14px;">
-                    تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
-                </div>
+            <div style="text-align: center; font-size: 14px;">
+                تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
+            </div>
             """, unsafe_allow_html=True)
 
 if __name__ == "__main__":

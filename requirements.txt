@@ -7,3 +7,4 @@ pydub
 pillow
 numpy
 requests
+pygame

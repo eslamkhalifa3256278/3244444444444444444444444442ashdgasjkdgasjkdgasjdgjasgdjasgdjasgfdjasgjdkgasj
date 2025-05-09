@@ -15,7 +15,7 @@ LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
 
 # تهيئة النموذج باستخدام مفتاح API
 genai.configure(api_key=st.secrets["AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaWw"])
-model = genai.GenerativeModel('gemini-2.0-pro')
+model = genai.GenerativeModel('gemini-pro')
 
 # قاعدة بيانات المستخدمين
 if 'users_db' not in st.session_state:

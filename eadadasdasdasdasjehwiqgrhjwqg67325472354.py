@@ -14,7 +14,7 @@ LOGO_URL = "https://www2.0zz0.com/2025/05/01/22/992228290.png"
 LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
 
 # تهيئة النموذج باستخدام مفتاح API
-genai.configure(api_key=st.secrets["API_KEY"])
+genai.configure(api_key=st.secrets["AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaWw"])
 model = genai.GenerativeModel('gemini-2.0-pro')
 
 # قاعدة بيانات المستخدمين

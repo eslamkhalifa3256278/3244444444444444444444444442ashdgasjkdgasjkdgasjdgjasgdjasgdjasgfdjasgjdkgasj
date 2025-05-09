@@ -4,68 +4,78 @@ from datetime import datetime, date
 import hashlib
 import time
 from dateutil.relativedelta import relativedelta
-import json
-import os
-from PIL import Image
 import base64
+import json
+import random
 
 # إعدادات التطبيق
 LOGO_URL = "https://www2.0zz0.com/2025/05/01/22/992228290.png"
 LOGIN_LOGO = "https://www2.0zz0.com/2025/05/01/22/314867624.png"
 
 # تهيئة النموذج باستخدام مفتاح API
-genai.configure(api_key=st.secrets["AIzaSyAIW5XnFdDZn3sZ6uwRN05hX-KmKy0OaWw"])
-model = genai.GenerativeModel('gemini-pro')
+genai.configure(api_key=st.secrets["API_KEY"])
+model = genai.GenerativeModel('gemini-2.0-flash')
 
-# قاعدة بيانات المستخدمين
+# قاعدة بيانات المستخدمين (مؤقتة)
 if 'users_db' not in st.session_state:
     st.session_state.users_db = {}
 
-# تحميل أو إنشاء ملف المحادثات
-MESSAGES_FILE = "conversations.json"
-if os.path.exists(MESSAGES_FILE):
-    with open(MESSAGES_FILE, "r", encoding="utf-8") as f:
-        st.session_state.messages = json.load(f)
-else:
-    st.session_state.messages = []
+# إعداد الوضع الليلي
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
 
-# رفع عدد الملفات المسموح بها يومياً
-if "uploaded_files" not in st.session_state:
-    st.session_state.uploaded_files = 0
-    st.session_state.max_files_per_day = 2
-    st.session_state.last_upload_date = None
+st.set_page_config(
+    page_title="LEO Chat",
+    page_icon=LOGIN_LOGO,
+    layout="wide"
+)
 
-# الإحصائيات
-if "chat_stats" not in st.session_state:
-    st.session_state.chat_stats = {"messages": 0, "uploads": 0, "replies": 0}
+# CSS للوضع الليلي
+if st.session_state.dark_mode:
+    st.markdown("""
+        <style>
+            body {
+                background-color: #1E1E1E;
+                color: white;
+            }
+            .stButton>button {
+                background-color: #444;
+                color: white;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-def save_messages():
-    with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
-        json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
+# حفظ المحادثات في ملف JSON
+def save_conversation():
+    if 'messages' in st.session_state and st.session_state.messages:
+        filename = f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
+        with open(filename, 'rb') as f:
+            b64 = base64.b64encode(f.read()).decode()
+            href = f'<a href="data:file/json;base64,{b64}" download="{filename}">📥 تحميل المحادثة</a>'
+            st.markdown(href, unsafe_allow_html=True)
+
+# مؤثرات جميلة عند التسجيل
+def show_confetti():
+    st.balloons()
+    st.snow()
 
 def app():
-    st.set_page_config(
-        page_title="LEO Chat",
-        page_icon=LOGIN_LOGO,
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
+    if "uploaded_files" not in st.session_state:
+        st.session_state.uploaded_files = 0
+        st.session_state.max_files_per_day = 2
+        st.session_state.last_upload_date = None
 
     def create_account():
-        st.markdown(f"""
-            <div style='text-align:center; margin-bottom: 20px;'>
-                <img src=\"{LOGIN_LOGO}\" width=\"300\">
-                <h2 style='color:#4B4B4B;'>إنشاء حساب جديد</h2>
-            </div>
-        """, unsafe_allow_html=True)
-
+        st.image(LOGIN_LOGO, width=300)
+        st.header("إنشاء حساب جديد")
         with st.form("إنشاء حساب جديد"):
             name = st.text_input("👤 الاسم الكامل")
             email = st.text_input("📧 البريد الإلكتروني")
             birth_date = st.date_input("🎂 تاريخ الميلاد", min_value=date(1900, 1, 1))
             password = st.text_input("🔒 كلمة المرور", type="password")
             confirm_password = st.text_input("✅ تأكيد كلمة المرور", type="password")
-
             submitted = st.form_submit_button("إنشاء الحساب ✨")
             if submitted:
                 age = relativedelta(date.today(), birth_date).years
@@ -82,32 +92,28 @@ def app():
                         'birth_date': birth_date
                     }
                     st.success("✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن")
+                    show_confetti()
                     time.sleep(2)
                     st.session_state.current_page = "login"
                     st.rerun()
 
     def login_page():
-        st.markdown(f"""
-            <div style='text-align:center; margin-bottom: 20px;'>
-                <img src=\"{LOGIN_LOGO}\" width=\"300\">
-                <h2 style='color:#4B4B4B;'>تسجيل الدخول</h2>
-            </div>
-        """, unsafe_allow_html=True)
-
+        st.image(LOGIN_LOGO, width=300)
+        st.header("تسجيل الدخول")
         with st.form("تسجيل الدخول"):
             email = st.text_input("📧 البريد الإلكتروني")
             password = st.text_input("🔒 كلمة المرور", type="password")
-
             submitted = st.form_submit_button("تسجيل الدخول ✅")
             if submitted:
                 if email in st.session_state.users_db and \
-                    hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
+                        hashlib.sha256(password.encode()).hexdigest() == st.session_state.users_db[email]['password']:
                     st.session_state.logged_in = True
                     st.session_state.current_user = {
                         'email': email,
                         'name': st.session_state.users_db[email]['name']
                     }
                     st.success("✅ تم تسجيل الدخول بنجاح!")
+                    show_confetti()
                     time.sleep(1)
                     st.rerun()
                 else:
@@ -116,13 +122,13 @@ def app():
     def info_page():
         st.title("معلومات عن التطبيق")
         st.markdown("""
-        <div style="background-color:#f0f2f6;padding:20px;border-radius:10px">
-            <h3>LEO Chat</h3>
-            <p>تم تطوير هذا التطبيق بواسطة <strong>إسلام خليفة</strong></p>
-            <p>الجنسية: مصري</p>
-            <p>للتواصل: 01028799352</p>
-            <p>الإصدار: 1.1</p>
-        </div>
+            <div style="background-color:#f0f2f6;padding:20px;border-radius:10px">
+                <h3>LEO Chat</h3>
+                <p>تم تطوير هذا التطبيق بواسطة <strong>إسلام خليفة</strong></p>
+                <p>الجنسية: مصري</p>
+                <p>للتواصل: 01028799352</p>
+                <p>الإصدار: 1.0</p>
+            </div>
         """, unsafe_allow_html=True)
 
     if 'current_page' not in st.session_state:
@@ -141,15 +147,15 @@ def app():
             st.markdown("---")
             if st.button("🔄 بدء محادثة جديدة"):
                 st.session_state.messages = []
-                save_messages()
                 st.rerun()
 
             st.markdown("---")
-            st.subheader("📊 الإحصائيات")
-            stats = st.session_state.chat_stats
-            st.markdown(f"- عدد الرسائل: {stats['messages']}")
-            st.markdown(f"- الردود: {stats['replies']}")
-            st.markdown(f"- الملفات المرفوعة: {stats['uploads']}")
+            if st.button("💾 حفظ المحادثة"):
+                save_conversation()
+
+            if st.button("🌗 تبديل الوضع الليلي"):
+                st.session_state.dark_mode = not st.session_state.dark_mode
+                st.rerun()
 
             st.markdown("---")
             if st.button("ℹ️ معلومات عن التطبيق"):
@@ -195,34 +201,29 @@ def app():
 
                 if st.session_state.uploaded_files < st.session_state.max_files_per_day:
                     st.session_state.uploaded_files += 1
-                    st.session_state.chat_stats["uploads"] += 1
                     st.success(f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
                 else:
                     st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
 
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
             for message in st.session_state.messages:
                 avatar = LOGIN_LOGO if message["role"] == "assistant" else "👤"
-                bg = "#F0F0F0" if message["role"] == "user" else "#E0FFE0"
                 with st.chat_message(message["role"], avatar=avatar):
-                    st.markdown(f"""
-                        <div style='background-color:{bg}; padding:10px; border-radius:10px;'>
-                        {message['content']}
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(message["content"])
 
             if prompt := st.chat_input("اكتب رسالتك هنا..."):
                 if "logged_in" not in st.session_state or not st.session_state.logged_in:
                     st.warning("الرجاء تسجيل الدخول لإرسال الرسائل")
                 else:
                     st.session_state.messages.append({"role": "user", "content": prompt})
-                    st.session_state.chat_stats["messages"] += 1
-                    with st.spinner("جارٍ إعداد الرد..."):
+                    with st.spinner("🤖 بيكتبلك الرد..."):
                         try:
                             response = model.generate_content(prompt)
                             reply = response.text
+                            time.sleep(random.uniform(1, 2))  # أنيمشن بسيط بالانتظار
                             st.session_state.messages.append({"role": "assistant", "content": reply})
-                            st.session_state.chat_stats["replies"] += 1
-                            save_messages()
                             st.rerun()
                         except Exception as e:
                             st.error(f"حدث خطأ: {str(e)}")
@@ -230,7 +231,7 @@ def app():
             st.markdown("---")
             st.caption("""
                 <div style="text-align: center; font-size: 14px;">
-                    تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.1
+                    تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
                 </div>
             """, unsafe_allow_html=True)
 

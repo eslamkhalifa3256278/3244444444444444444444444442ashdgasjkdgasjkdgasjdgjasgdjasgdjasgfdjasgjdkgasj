@@ -1,2 +1,9 @@
+streamlit
 google-generativeai
-firebase-admin
+python-dateutil
+pyttsx3
+SpeechRecognition
+pydub
+pillow
+numpy
+requests

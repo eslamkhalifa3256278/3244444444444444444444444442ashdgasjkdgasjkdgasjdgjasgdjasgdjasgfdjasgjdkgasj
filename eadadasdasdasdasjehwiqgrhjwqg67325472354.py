@@ -149,6 +149,11 @@ def app():
                 st.session_state.messages = []
                 st.rerun()
 
+            if st.button("🗑️ حذف المحادثة"):
+                st.session_state.messages = []
+                st.success("✅ تم حذف المحادثة")
+                st.rerun()
+
             st.markdown("---")
             if st.button("💾 حفظ المحادثة"):
                 save_conversation()
@@ -162,7 +167,75 @@ def app():
                 st.session_state.show_info = True
                 st.rerun()
 
-    if 'logged_in' not in st.session_state or not st.session_state.logged_in:
+            st.markdown("---")
+            st.subheader("📊 إحصائيات")
+            st.markdown(f"- عدد الرسائل: {len(st.session_state.messages)}")
+            st.markdown(f"- عدد الملفات المرفوعة: {st.session_state.uploaded_files}/{st.session_state.max_files_per_day}")
+
+        today = datetime.now().date()
+        if 'last_welcome_date' not in st.session_state or st.session_state.last_welcome_date != today:
+            st.info(f"👋 صباح الخير يا {st.session_state.current_user['name']}! أتمنى لك يوم سعيد ومثمر 😄")
+            st.session_state.last_welcome_date = today
+
+        col1, col2 = st.columns([0.1, 0.9])
+        with col1:
+            st.image(LOGO_URL, width=80)
+        with col2:
+            st.title("LEO Chat")
+
+        uploaded_file = st.file_uploader(
+            "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
+            type=["pdf", "txt", "docx"],
+            accept_multiple_files=False,
+            key="file_uploader"
+        )
+
+        if uploaded_file:
+            current_date = datetime.now().date()
+            if st.session_state.last_upload_date != current_date:
+                st.session_state.uploaded_files = 0
+                st.session_state.last_upload_date = current_date
+
+            if st.session_state.uploaded_files < st.session_state.max_files_per_day:
+                st.session_state.uploaded_files += 1
+                st.success(f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
+            else:
+                st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
+
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        for message in st.session_state.messages:
+            avatar = LOGIN_LOGO if message["role"] == "assistant" else "👤"
+            with st.chat_message(message["role"], avatar=avatar):
+                st.markdown(message["content"])
+                if "time" in message:
+                    st.caption(f"🕒 {message['time']}")
+
+        if prompt := st.chat_input("اكتب رسالتك هنا..."):
+            if "logged_in" not in st.session_state or not st.session_state.logged_in:
+                st.warning("الرجاء تسجيل الدخول لإرسال الرسائل")
+            else:
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                st.session_state.messages.append({"role": "user", "content": prompt, "time": now})
+                with st.spinner("🤖 بيكتبلك الرد..."):
+                    try:
+                        response = model.generate_content(prompt)
+                        reply = response.text
+                        time.sleep(random.uniform(1, 2))
+                        st.session_state.messages.append({"role": "assistant", "content": reply, "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"حدث خطأ: {str(e)}")
+
+        st.markdown("---")
+        st.caption("""
+            <div style="text-align: center; font-size: 14px;">
+                تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
+            </div>
+        """, unsafe_allow_html=True)
+
+    else:
         if st.session_state.current_page == "login":
             login_page()
             if st.button("إنشاء حساب جديد"):
@@ -173,67 +246,11 @@ def app():
             if st.button("العودة لتسجيل الدخول"):
                 st.session_state.current_page = "login"
                 st.rerun()
-    else:
-        if 'show_info' in st.session_state and st.session_state.show_info:
+        elif 'show_info' in st.session_state and st.session_state.show_info:
             info_page()
             if st.button("العودة للرئيسية"):
                 st.session_state.show_info = False
                 st.rerun()
-        else:
-            col1, col2 = st.columns([0.1, 0.9])
-            with col1:
-                st.image(LOGO_URL, width=80)
-            with col2:
-                st.title("LEO Chat")
-
-            uploaded_file = st.file_uploader(
-                "📤 رفع ملف (حد أقصى 2 ملف يومياً)",
-                type=["pdf", "txt", "docx"],
-                accept_multiple_files=False,
-                key="file_uploader"
-            )
-
-            if uploaded_file:
-                current_date = datetime.now().date()
-                if st.session_state.last_upload_date != current_date:
-                    st.session_state.uploaded_files = 0
-                    st.session_state.last_upload_date = current_date
-
-                if st.session_state.uploaded_files < st.session_state.max_files_per_day:
-                    st.session_state.uploaded_files += 1
-                    st.success(f"تم رفع الملف بنجاح! ({st.session_state.uploaded_files}/{st.session_state.max_files_per_day})")
-                else:
-                    st.warning("لقد تجاوزت الحد اليومي لرفع الملفات")
-
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-
-            for message in st.session_state.messages:
-                avatar = LOGIN_LOGO if message["role"] == "assistant" else "👤"
-                with st.chat_message(message["role"], avatar=avatar):
-                    st.markdown(message["content"])
-
-            if prompt := st.chat_input("اكتب رسالتك هنا..."):
-                if "logged_in" not in st.session_state or not st.session_state.logged_in:
-                    st.warning("الرجاء تسجيل الدخول لإرسال الرسائل")
-                else:
-                    st.session_state.messages.append({"role": "user", "content": prompt})
-                    with st.spinner("🤖 بيكتبلك الرد..."):
-                        try:
-                            response = model.generate_content(prompt)
-                            reply = response.text
-                            time.sleep(random.uniform(1, 2))  # أنيمشن بسيط بالانتظار
-                            st.session_state.messages.append({"role": "assistant", "content": reply})
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"حدث خطأ: {str(e)}")
-
-            st.markdown("---")
-            st.caption("""
-                <div style="text-align: center; font-size: 14px;">
-                    تم التطوير بواسطة Eslam Khalifa | نموذج LEO AI 1.0
-                </div>
-            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     app()

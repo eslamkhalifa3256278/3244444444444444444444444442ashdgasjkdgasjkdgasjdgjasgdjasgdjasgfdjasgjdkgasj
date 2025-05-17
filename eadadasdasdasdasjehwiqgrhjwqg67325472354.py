@@ -87,7 +87,7 @@ def image_chat_interface():
                             </a>
                         """, unsafe_allow_html=True)
                 else:
-                    st.error("❌ فشل في توليد الصورة")
+                    st.error("❌ يتم تطويرها عزيزي")
 
 # التطبيق الرئيسي
 def app():
@@ -186,7 +186,7 @@ def app():
             if prompt := st.chat_input("اكتب رسالتك هنا..."):
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 st.session_state.messages.append({"role": "user", "content": prompt, "time": now})
-                with st.spinner("🤖 بيكتبلك الرد..."):
+                with st.spinner("🤖جارى الرد ..."):
                     try:
                         response = model.generate_content(prompt)
                         reply = response.text

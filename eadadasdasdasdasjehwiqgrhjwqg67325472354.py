@@ -48,7 +48,7 @@ def save_conversation():
             json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
         with open(filename, 'rb') as f:
             b64 = base64.b64encode(f.read()).decode()
-            href = f'<a href="data:file/json;base64,{b64}" download="{filename}">📥 تحميل المحادثة</a>'
+            href = f'<a href="data:file/json;base64,{b64}" download="{filename}">📝 تحميل المحادثة</a>'
             st.markdown(href, unsafe_allow_html=True)
 
 def show_confetti():
@@ -103,7 +103,7 @@ def app():
             name = st.text_input("👤 الاسم الكامل")
             email = st.text_input("📧 البريد الإلكتروني")
             birth_date = st.date_input("🎂 تاريخ الميلاد", min_value=date(1900, 1, 1))
-            password = st.text_input("🔒 كلمة المرور", type="password")
+            password = st.text_input("🔐 كلمة المرور", type="password")
             confirm_password = st.text_input("✅ تأكيد كلمة المرور", type="password")
             submitted = st.form_submit_button("إنشاء الحساب ✨")
             if submitted:
@@ -131,7 +131,7 @@ def app():
         st.header("تسجيل الدخول")
         with st.form("تسجيل الدخول"):
             email = st.text_input("📧 البريد الإلكتروني")
-            password = st.text_input("🔒 كلمة المرور", type="password")
+            password = st.text_input("🔐 كلمة المرور", type="password")
             submitted = st.form_submit_button("تسجيل الدخول ✅")
             if submitted:
                 if email in st.session_state.users_db and \
@@ -183,6 +183,8 @@ def app():
                 avatar = LOGIN_LOGO if message["role"] == "assistant" else "👤"
                 with st.chat_message(message["role"], avatar=avatar):
                     st.markdown(message["content"])
+            # عرض اسم النموذج
+            st.markdown("<hr><div style='text-align:center; color:gray;'>نموذج LEO AI 1.0 🤖</div>", unsafe_allow_html=True)
             if prompt := st.chat_input("اكتب رسالتك هنا..."):
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 st.session_state.messages.append({"role": "user", "content": prompt, "time": now})
@@ -204,8 +206,4 @@ def app():
         elif st.session_state.current_page == "create_account":
             create_account()
             if st.button("العودة لتسجيل الدخول"):
-                st.session_state.current_page = "login"
-                st.rerun()
-
-if __name__ == "__main__":
-    app()
+                st.session_state.current_page
